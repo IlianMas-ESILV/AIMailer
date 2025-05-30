@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Net.Http;
 using System.Text;
 using System.Text.Json;
@@ -9,79 +10,215 @@ using System.Windows.Forms;
 
 namespace AiMailer
 {
-    public class IAConfig
-    {
-        public string Label { get; set; }       // Texte du bouton
-        public string Prompt { get; set; }      // Prompt système à envoyer à l'IA
-        public string Model { get; set; }       // Modèle IA à utiliser
-    }
 
     public partial class Form1 : Form
     {
-        private Dictionary<string, IAConfig> aiMailerIAActions = new Dictionary<string, IAConfig>
+        // aiMailerAIActions : Nom de l'action, Libellé du Bouton, Prompt système à envoyer à l'IA, Modèle IA à utiliser
+        /*
+        private string[,] aiMailerAIActions = new string[,]
             {
-            /*
                 { "Traduire", "Traduire", "Traduis précisément ce texte en français.", "nous-hermes-2-mistral-7b-dpo" },
-                { "Résumer", "Résumer", "Fais un résumé clair et concis du texte suivant.", "mistral-7b-instruct-v0.3@iq3_m" },
+                { "Resumer", "Résumer", "Fais un résumé clair et concis du texte suivant.", "mistral-7b-instruct-v0.3@iq3_m" },
                 { "Brainstorm", "Brainstorm", "Génère des idées créatives à partir de ce texte.", "deepseek-coder-6.7b-instruct" },
-                { "Élaborer", "Élaborer", "Développe cette idée en détail.", "deepseek-coder-6.7b-instruct" },
-                { "Style étudiant", "Style étudiant", "Reformule ce texte dans un style simple et accessible.", "nous-hermes-2-mistral-7b-dpo" },
-                { "Style pro", "Style pro", "Reformule ce texte dans un style professionnel.", "nous-hermes-2-mistral-7b-dpo" },
-                { "Rendez-vous", "Rendez-vous", "Rédige un message pour proposer un rendez-vous professionnel.", "openchat-3.5-1210" },
-             */
-                { "Traduire", new IAConfig { Label = "Traduire", Prompt = "Traduis précisément ce texte en français.", Model = "nous-hermes-2-mistral-7b-dpo" } },
-                { "Résumer", new IAConfig { Label = "Résumer", Prompt = "Fais un résumé clair et concis du texte suivant.", Model = "mistral-7b-instruct-v0.3@iq3_m" } },
-                { "Brainstorm", new IAConfig { Label = "Brainstorm", Prompt = "Génère des idées créatives à partir de ce texte.", Model = "deepseek-coder-6.7b-instruct" } },
-                { "Élaborer", new IAConfig { Label = "Élaborer", Prompt = "Développe cette idée en détail.", Model = "deepseek-coder-6.7b-instruct" } },
-                { "Style étudiant", new IAConfig { Label = "Style étudiant", Prompt = "Reformule ce texte dans un style simple et accessible.", Model = "nous-hermes-2-mistral-7b-dpo" } },
-                { "Style pro", new IAConfig { Label = "Style pro", Prompt = "Reformule ce texte dans un style professionnel.", Model = "nous-hermes-2-mistral-7b-dpo" } },
-                { "Rendez-vous", new IAConfig { Label = "Rendez-vous", Prompt = "Rédige un message pour proposer un rendez-vous professionnel.", Model = "openchat-3.5-1210" } }
-            };
+                { "Elaborer", "Élaborer", "Développe cette idée en détail.", "deepseek-coder-6.7b-instruct" },
+                { "StyleEtudiant", "Style étudiant", "Reformule ce texte dans un style simple et accessible.", "nous-hermes-2-mistral-7b-dpo" },
+                { "StylePro", "Style pro", "Reformule ce texte dans un style professionnel.", "nous-hermes-2-mistral-7b-dpo" },
+                { "RendezVous", "Rendez-vous", "Rédige un message pour proposer un rendez-vous professionnel.", "openchat-3.5-1210" }
+        };
+        */
 
+        // Error messages 
         private Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
         {
-                { "ERROR_EDITOR_EMPTYSELECTION" , "Veuillez entrer ou sélectionner du texte." }
+                { "ERROR_EDITOR_EMPTYSELECTION" , "Veuillez entrer ou sélectionner du texte." },
+                { "ERROR_EDITOR_IACALL" , "Erreur lors de l'appel à l'IA." }
         };
 
-
-
+        // Noms et textes des objets graphiques
+        private string AIMAilerConfigFile = "AIMailer.json";
         private string AIMailerName = "AIMailer";
         private string AIMailerEditorName = "AIMailerEditor";
         private string AIMailerActionPanelName = "AIMailerActionPanel";
+        private string textFontSliderLabel = "Taille : ";
+
+        // Caractéristiques de la zone de texte et des boutons
+        private int textFontSize = 12, textFontSizeMin = 8, textFontSizeMax = 32, textFontSliderWidth = 200, textFontSliderHeight = 40;
+        private int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
+        private int textWidth = 600, textHeight = 400  ;
+        private int buttonXOffset = 1, buttonYOffset = 10, buttonYSpace = 10;
+        private int buttonWidth = 100, buttonHeight = 30;
+        private BorderStyle buttonBorderStyle = BorderStyle.None; // BorderStyle.None BorderStyle.FixedSingle BorderStyle.Fixed3D
+        private Color buttonBackColor = Color.Empty; // Color.LightGray;
+        private Color buttonTextColor = Color.MidnightBlue; // Color.Empty;
 
         private TextBox AIMailerEditor;
 
+        ///// **********************************************************************
+        ///// *** Sous-Fonctions génériques ****************************************
+        ///// **********************************************************************
+
+        /// Fonction générique d'affichage des erreurs
+        private void AIMailerErrorShow(string msgKey, string errorDetails = "")
+        {
+            string msgLabel = "";
+
+            if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
+                msgLabel = "Code Erreur inconnu : " + msgKey + ".";
+            MessageBox.Show(msgLabel + (errorDetails == "" ? "" : "\n[" + errorDetails + "]"));
+        }
+
+        // Structure de Tag des boutons d'action
+        public class aiActionButtonTag
+        {
+            public string Id { get; set; }          // Id de l'action
+            public string Label { get; set; }       // Texte du bouton
+            public string Prompt { get; set; }      // Prompt système à envoyer à l'IA
+            public string Model { get; set; }       // Modèle IA à utiliser
+        }
+
+        // aiMailerAIActions : Nom de l'action, Libellé du Bouton, Prompt système à envoyer à l'IA, Modèle IA à utiliser
+        private List<aiActionButtonTag> aiMailerAIActions = new List<aiActionButtonTag>();
+
+        private void MenuOuvrir_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog openFileDialog = new OpenFileDialog
+            {
+                Filter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*"
+            };
+
+            if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                string contenu = System.IO.File.ReadAllText(openFileDialog.FileName);
+                AIMailerEditor.Text = contenu;
+            }
+        }
+
+        private void MenuEnregistrer_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog saveFileDialog = new SaveFileDialog
+            {
+                Filter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*"
+            };
+
+            if (saveFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                System.IO.File.WriteAllText(saveFileDialog.FileName, AIMailerEditor.Text);
+            }
+        }
+
+        ///// **********************************************************************
+        ///// *** Form Editeur *****************************************************
+        ///// **********************************************************************
         public Form1()
         {
+            InitializeConfiguration();
             InitializeComponent();
             InitialiserInterface();
+        }
+
+        private void InitializeConfiguration()
+        {
+            string configPath = AIMAilerConfigFile;  // ⚠️ vérifier l'orthographe ici
+            if (File.Exists(configPath))
+            {
+                string json = File.ReadAllText(configPath);
+                aiMailerAIActions = JsonSerializer.Deserialize<List<aiActionButtonTag>>(json);
+            }
+            else
+            {
+                MessageBox.Show("Fichier de configuration '" + AIMAilerConfigFile +"' introuvable dans " + Application.StartupPath);
+                aiMailerAIActions = new List<aiActionButtonTag>(); // évite un crash          
+            }
         }
 
         // 🖼️ Initialise l'interface graphique
         private void InitialiserInterface()
         {
-            this.Size = new Size(800, 450);
+            // Création de la barre de menu
+            MenuStrip menuStrip = new MenuStrip();
+
+            // Création du menu "Fichier"
+            ToolStripMenuItem menuFichier = new ToolStripMenuItem("Fichier");
+            ToolStripMenuItem menuOuvrir = new ToolStripMenuItem("Ouvrir");
+            ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem("Enregistrer");
+
+            // Ajout des événements
+            menuOuvrir.Click += MenuOuvrir_Click;
+            menuEnregistrer.Click += MenuEnregistrer_Click;
+
+            // Organisation des menus
+            menuFichier.DropDownItems.Add(menuOuvrir);
+            menuFichier.DropDownItems.Add(menuEnregistrer);
+            menuStrip.Items.Add(menuFichier);
+
+            // Ajout à la fenêtre
+            this.MainMenuStrip = menuStrip;
+            this.Controls.Add(menuStrip);
+            int menuStripYOffset = menuStrip.Height;
+
+
+            // Taille Textbox 
             this.Text = AIMailerName;
+            this.Size = new Size(textWidth + 2* textXOffset + buttonWidth + 2 * buttonXOffset + textXScrollbar,
+                                 menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar);
 
             // Zone de texte principale
             AIMailerEditor = new TextBox
             {
                 Multiline = true,
                 Name = AIMailerEditorName,
-                Size = new Size(550, 350),
-                Location = new Point(200, 30),
-                ScrollBars = ScrollBars.Vertical
+                Size = new Size(textWidth, textHeight),
+                Font = new Font(this.Font.FontFamily, textFontSize),
+                Location = new Point(textXOffset, menuStripYOffset + textYOffset),
+                ScrollBars = ScrollBars.Vertical,
+                Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
             this.Controls.Add(AIMailerEditor);
+
+            // Curseur pour la taille du texte
+            TrackBar fontSizeSlider = new TrackBar
+            {
+                Minimum = textFontSizeMin, Maximum = textFontSizeMax, Value = textFontSize,
+                TickFrequency = 2, SmallChange = 1, LargeChange = 2,
+                Orientation = Orientation.Horizontal,
+                Location = new Point(textXOffset, AIMailerEditor.Bottom + 10),
+                Width = textFontSliderWidth,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+            };
+
+            // Étiquette pour afficher la taille actuelle
+            Label fontSizeLabel = new Label
+            {
+                Text = textFontSliderLabel + textFontSize,
+                Location = new Point(fontSizeSlider.Right + 10, fontSizeSlider.Top + 5),
+                AutoSize = true,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Left
+            };
+
+            // Événement : met à jour la taille de la police
+            fontSizeSlider.Scroll += (s, e) =>
+            {
+                int newSize = fontSizeSlider.Value;
+                AIMailerEditor.Font = new Font(AIMailerEditor.Font.FontFamily, newSize);
+                fontSizeLabel.Text = textFontSliderLabel + newSize;
+            };
+
+            // Ajout à la fenêtre
+            this.Controls.Add(fontSizeSlider);
+            this.Controls.Add(fontSizeLabel);
+
 
             // Panneau latéral pour les boutons IA
             Panel actionPanel = new Panel
             {
                 Name = AIMailerActionPanelName,
-                Size = new Size(180, 370),
-                Location = new Point(10, 30),
-                BorderStyle = BorderStyle.FixedSingle,
-                BackColor = Color.LightGray
+                Size = new Size(buttonWidth + 2* buttonXOffset,
+                                aiMailerAIActions.Count * (buttonHeight + buttonYSpace) + 2 *buttonYOffset - buttonYSpace),
+                Location = new Point(textWidth + 2 * textXOffset, menuStripYOffset + textYOffset),
+                BorderStyle = buttonBorderStyle,
+                BackColor = buttonBackColor,
+                ForeColor = buttonTextColor,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             this.Controls.Add(actionPanel);
 
@@ -89,37 +226,34 @@ namespace AiMailer
             AjouterTousLesBoutons(actionPanel);
         }
 
-        // ➕ Ajoute tous les boutons définis dans aiMailerIAActions
+        // ➕ Ajoute tous les boutons définis dans aiMailerAIActions
         private void AjouterTousLesBoutons(Panel panel)
         {
-            int y = 10;
-            foreach (var config in aiMailerIAActions.Values)
+
+            // Pour chaque descritpino de bouton d'action
+            for (int i = 0, x = buttonXOffset, y = buttonYOffset; i < aiMailerAIActions.Count; y += buttonHeight + buttonYSpace, i++)
             {
+                var action = aiMailerAIActions[i];
+
                 Button btn = new Button
                 {
-                    Text = config.Label,
-                    Size = new Size(150, 30),
-                    Location = new Point(15, y),
-                    Tag = config
+                    Text = action.Label,
+                    Size = new Size(buttonWidth, buttonHeight),
+                    Location = new Point(x, y),
+                    BackColor = buttonBackColor,
+                    ForeColor = buttonTextColor,
+
+                    Tag = new aiActionButtonTag { Label = action.Label, Prompt = action.Prompt, Model = action.Model }
                 };
 
-                btn.Click += async (s, e) => await AppelerIAAsync((IAConfig)((Button)s).Tag);
+                btn.Click += async (s, e) => await AppelerIAAsync((aiActionButtonTag)((Button)s).Tag);
                 panel.Controls.Add(btn);
-                y += 40;
             }
-        }
 
-        private void AIMailerErrorShow(string msgKey)
-        {
-            string msgLabel = "";
-
-            if( ! aiMailerErrorMsgs.TryGetValue(msgKey,out msgLabel) )
-                msgLabel = "Unknown error label";
-            MessageBox.Show(msgLabel);
         }
 
         // 🤖 Appelle l'IA avec le modèle et prompt définis dans config
-        private async Task AppelerIAAsync(IAConfig config)
+        private async Task AppelerIAAsync(aiActionButtonTag config)
         {
             string userInput = string.IsNullOrWhiteSpace(AIMailerEditor.SelectedText) ? AIMailerEditor.Text : AIMailerEditor.SelectedText;
             if (string.IsNullOrWhiteSpace(userInput))
@@ -162,21 +296,18 @@ namespace AiMailer
                         {
                             int selStart = AIMailerEditor.SelectionStart;
                             int selLength = AIMailerEditor.SelectionLength;
-                            AIMailerEditor.Text = AIMailerEditor.Text.Substring(0, selStart) +
-                                           reply +
+                            AIMailerEditor.Text = AIMailerEditor.Text.Substring(0, selStart) + reply +
                                            AIMailerEditor.Text.Substring(selStart + selLength);
                             AIMailerEditor.SelectionStart = selStart;
                             AIMailerEditor.SelectionLength = reply.Length;
                         }
                         else
-                        {
                             AIMailerEditor.Text = reply;
-                        }
                     }
                 }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("Erreur : " + ex.Message);
+                    AIMailerErrorShow("ERROR_EDITOR_IACALL",ex.Message);
                 }
             }
         }
