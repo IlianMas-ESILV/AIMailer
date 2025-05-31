@@ -105,6 +105,39 @@ namespace AiMailer
                 System.IO.File.WriteAllText(saveFileDialog.FileName, AIMailerEditor.Text);
             }
         }
+        private void MenuEditerConfig_Click(object sender, EventArgs e)
+        {
+            string configPath = Path.Combine(Application.StartupPath, "AIMAiler.json");
+
+            if (File.Exists(configPath))
+            {
+                try
+                {
+                    System.Diagnostics.Process.Start("notepad.exe", configPath);
+                }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Impossible d’ouvrir le fichier de config :\n" + ex.Message);
+                }
+            }
+            else
+            {
+                MessageBox.Show("Fichier de configuration introuvable :\n" + configPath);
+            }
+        }
+        private void MenuActualiserConfig_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                // Redémarre le programme
+                Application.Restart();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Impossible de redémarrer l'application :\n" + ex.Message);
+            }
+        }
+
 
         ///// **********************************************************************
         ///// *** Form Editeur *****************************************************
@@ -139,16 +172,23 @@ namespace AiMailer
 
             // Création du menu "Fichier"
             ToolStripMenuItem menuFichier = new ToolStripMenuItem("Fichier");
-            ToolStripMenuItem menuOuvrir = new ToolStripMenuItem("Ouvrir");
+            ToolStripMenuItem menuOuvrir = new ToolStripMenuItem("Ouvrir...");
             ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem("Enregistrer");
+            ToolStripMenuItem menuEditerConfig = new ToolStripMenuItem("Éditer les actions...");
+            ToolStripMenuItem menuActualiserConfig = new ToolStripMenuItem("Actualiser les actions");
 
             // Ajout des événements
             menuOuvrir.Click += MenuOuvrir_Click;
             menuEnregistrer.Click += MenuEnregistrer_Click;
+            menuEditerConfig.Click += MenuEditerConfig_Click;
+            menuActualiserConfig.Click += MenuActualiserConfig_Click;
 
             // Organisation des menus
             menuFichier.DropDownItems.Add(menuOuvrir);
             menuFichier.DropDownItems.Add(menuEnregistrer);
+            menuFichier.DropDownItems.Add(new ToolStripSeparator()); // Ligne de séparation visuelle
+            menuFichier.DropDownItems.Add(menuEditerConfig);
+            menuFichier.DropDownItems.Add(menuActualiserConfig);
             menuStrip.Items.Add(menuFichier);
 
             // Ajout à la fenêtre
