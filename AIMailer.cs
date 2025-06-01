@@ -16,7 +16,7 @@ using System.Windows.Forms;
 
 namespace AIMailer
 {
-    public partial class Form1 : Form
+    public partial class AIMailer : Form
     {
         /* Context Prompt pour mémo 
             Tu es un assistant IA francophone expert en rédaction, traduction et synthèse de texte. 
@@ -354,13 +354,13 @@ namespace AIMailer
         ///// **********************************************************************
 
         // Initialisation de la fenêtre par appel à la fonction générée par Visual Studio
-        public Form1()
+        public AIMailer()
         {
             InitializeComponent();       // Fonction générée par VS dans Form1.Designer
         }
 
         // lancement de l'application par la fct appelée après création de la fenêtre
-        private void Form1_Load(object sender, EventArgs e)
+        private void AIMailer_Load(object sender, EventArgs e)
         {
             LoadConfigurationFromFile(); // Lecture de la configuration de l'appli
             InitialiserInterface();      // Adaptation de la fenêtre

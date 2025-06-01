@@ -1,6 +1,6 @@
 ﻿namespace AIMailer
 {
-    partial class Form1
+    partial class AIMailer
     {
         /// <summary>
         /// Required designer variable.
@@ -30,15 +30,14 @@
         {
             this.SuspendLayout();
             // 
-            // Form1
+            // AIMailer
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(584, 361);
-            this.Margin = new System.Windows.Forms.Padding(2);
-            this.Name = "Form1";
+            this.ClientSize = new System.Drawing.Size(876, 555);
+            this.Name = "AIMailer";
             this.Text = "AIMailer";
-            this.Load += new System.EventHandler(this.Form1_Load);
+            this.Load += new System.EventHandler(this.AIMailer_Load);
             this.ResumeLayout(false);
 
         }

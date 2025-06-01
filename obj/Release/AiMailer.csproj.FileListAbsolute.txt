@@ -22,10 +22,10 @@ C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\R
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Release\System.Threading.Tasks.Extensions.xml
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Release\System.ValueTuple.xml
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.csproj.AssemblyReference.cache
-C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AIMailer.Form1.resources
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.Properties.Resources.resources
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.csproj.GenerateResource.cache
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.csproj.CoreCompileInputs.cache
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.csproj.Up2Date
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.exe
 C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Release\AIMailer.AIMailer.resources
