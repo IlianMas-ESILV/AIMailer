@@ -15,31 +15,31 @@
     {
       "Id": "Brainstorm",
       "Name": "Brainstorm",
-      "Prompt": "Génère des idées créatives à partir de ce texte.",
+      "Prompt": "Génère des idées créatives à partir de ce texte : ",
       "Temperature": 0.7
     },
     {
       "Id": "Elaborer",
       "Name": "Élaborer",
-      "Prompt": "Développe cette idée en détail.",
+      "Prompt": "Développe cette idée en détail : ",
       "Temperature": 0.7
     },
     {
       "Id": "StyleEtudiant",
       "Name": "Style étudiant",
-      "Prompt": "Reformule ce texte dans un style simple et accessible.",
+      "Prompt": "Reformule ce texte dans un style simple et accessible : ",
       "Temperature": 0.7
     },
     {
       "Id": "StylePro",
       "Name": "Style pro",
-      "Prompt": "Reformule ce texte dans un style professionnel.",
+      "Prompt": "Reformule ce texte dans un style professionnel : ",
       "Temperature": 0.7
     },
     {
       "Id": "RDV",
       "Name": "Rendez-vous",
-      "Prompt": "Rédige un message pour proposer un rendez-vous professionnel.",
+      "Prompt": "Rédige un message pour proposer un rendez-vous professionnel : ",
       "Temperature": 0.7
     }
   ],
@@ -48,6 +48,7 @@
       "Id": "LMS",
       "Name": "LM Studio (Local)",
       "Uri": "http://127.0.0.1:1234",
+      "Context": "Tu es un assistant IA francophone expert en rédaction, traduction et synthèse de texte. Tu réponds toujours en français clair et précis, sans jamais expliquer tes actions, sauf si demandé. Adapte ta réponse au style du texte original si c’est un extrait, et respecte les consignes suivantes : ne commente jamais les instructions, ne cite pas le texte source, reste concis si le contexte le demande, et respecte le formattage et les retours à la ligne du texte d'origine lorsque tu traduis. ",
       "Key": "",
 	  "Models": [
 			{
@@ -71,6 +72,7 @@
 			  "TokensMax": 200
 			},
 			{
+			  "Default": true,
 			  "Id": "Mist7B0.1Comp",
 			  "Name": "Mistral 7B Instruct v0.1 Q4KM (completion)",
 			  "ModelType": "CompletionTokens",
@@ -81,7 +83,6 @@
 			  "TokensMax": 200
 			},
 			{
-			  "Default": true,
 			  "Id": "DeepSeek67b",
 			  "Name": "DeepSeek Coder 6.7B Instruct",
 			  "ModelType": "Chat",
@@ -108,6 +109,7 @@
       "Name": "ChatGPT (Cloud)",
       "Uri": "https://api.openai.com",
       "Key": "",
+      "Context": "Tu es un assistant IA francophone expert en rédaction, traduction et synthèse de texte. Tu réponds toujours en français clair et précis, sans jamais expliquer tes actions, sauf si demandé. Adapte ta réponse au style du texte original si c’est un extrait, et respecte les consignes suivantes : ne commente jamais les instructions, ne cite pas le texte source, et reste concis si le contexte le demande.",
 			"Models": [
 					{
 						"Id": "ChatGPP4o",

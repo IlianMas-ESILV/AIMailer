@@ -1,0 +1,124 @@
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.csproj.AssemblyReference.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.Form1.resources
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.Properties.Resources.resources
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.csproj.GenerateResource.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.csproj.CoreCompileInputs.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\AiMailer.exe.config
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Buffers.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.IO.Pipelines.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Memory.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Text.Encodings.Web.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Text.Json.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.ValueTuple.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Buffers.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.IO.Pipelines.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Memory.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Numerics.Vectors.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Text.Encodings.Web.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Text.Json.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\bin\Debug\System.ValueTuple.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Stage IFT\AiMailer\obj\Debug\AiMailer.csproj.Up2Date
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\AiMailer.exe.config
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Buffers.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.IO.Pipelines.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Memory.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Text.Encodings.Web.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Text.Json.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.ValueTuple.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Buffers.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.IO.Pipelines.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Memory.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Numerics.Vectors.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Text.Encodings.Web.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Text.Json.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\bin\Debug\System.ValueTuple.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.csproj.AssemblyReference.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.Properties.Resources.resources
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.csproj.GenerateResource.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.csproj.CoreCompileInputs.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.csproj.Up2Date
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\AiMailer\obj\Debug\AiMailer.IAConfig.resources
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\AiMailer.exe.config
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Buffers.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.IO.Pipelines.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Memory.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Text.Encodings.Web.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Text.Json.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Threading.Tasks.Extensions.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.ValueTuple.dll
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Buffers.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.IO.Pipelines.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Memory.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Numerics.Vectors.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Text.Encodings.Web.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Text.Json.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\bin\Debug\System.ValueTuple.xml
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.csproj.AssemblyReference.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.Properties.Resources.resources
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.csproj.GenerateResource.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.csproj.CoreCompileInputs.cache
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.csproj.Up2Date
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.exe
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.pdb
+C:\Users\Ilian Lance\OneDrive - De Vinci\Applications\GitHubRepos\AIMailer\obj\Debug\AiMailer.Form1.resources
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\AiMailer.exe.config
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\AiMailer.exe
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\AiMailer.pdb
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Buffers.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.IO.Pipelines.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Memory.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Numerics.Vectors.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Text.Encodings.Web.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Text.Json.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.ValueTuple.dll
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\Microsoft.Bcl.AsyncInterfaces.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Buffers.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.IO.Pipelines.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Memory.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Numerics.Vectors.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Runtime.CompilerServices.Unsafe.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Text.Encodings.Web.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Text.Json.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.Threading.Tasks.Extensions.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\bin\Debug\System.ValueTuple.xml
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.csproj.AssemblyReference.cache
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.Form1.resources
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.Properties.Resources.resources
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.csproj.GenerateResource.cache
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.csproj.CoreCompileInputs.cache
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.csproj.Up2Date
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.exe
+C:\Users\IlianLance\OneDrive - De Vinci Higher Education (DVHE)\Applications\GitHubRepos\AiMailer\obj\Debug\AiMailer.pdb
