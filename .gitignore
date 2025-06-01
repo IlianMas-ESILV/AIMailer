@@ -3,7 +3,7 @@
 ################################################################################
 
 .vs/
-/Form1.svg.cs
+bin/
+obj/
 /.gitignore
-/.gitignore
-/Form1.svg.cs
+/AIMailer.svg.cs

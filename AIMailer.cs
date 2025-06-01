@@ -10,6 +10,7 @@ using System.Runtime.InteropServices;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -25,7 +26,9 @@ namespace AIMailer
             ne commente jamais les instructions, ne cite pas le texte source, et reste concis si le contexte le demande.
         */
 
-        // Noms et textes des objets graphiques
+        // ***********************************************
+        // ***** Noms et chaines de caractères ***********
+        // ***********************************************
         private const string aiMailerConfigFile = "AIMailer.json";
         private const string aiMailerNotepadExe = "notepad.exe";
         private const string aiMailerName = "AIMailer";
@@ -47,13 +50,14 @@ namespace AIMailer
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
         private const string stringMaskCompletionPopupPrompt = "Appel à l'IA en cours... \n\n\n\n[Modèle] '{0}'\n\n[Type] '{1}'\n\n[Prompt] {2}'\n\n[temperature] {3}\n\n[max_tokens] {4}";
         private const string stringMaskChatPopupPrompt = "Appel à l'IA en cours... \n\n\n\n[Modèle] '{0}'\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}";
-
         private const string aiMailerErrorStringEmpty = "<vide>";
-        private const int aiMailerErrorStringLenghtMax = 150;           // Long max d'une chaine d'erreur
-        private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI        
         private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
+        private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
+        private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI        
 
-        /// Caractéristiques de la zone de texte et des boutons
+        // ******************************************************
+        // ***** Caractéristiques des objets graphiques *********
+        // ******************************************************
         // Font sizes
         private const string editeurTextFontFamily = "Inter"; // "Segoe UI"
         private const int editeurTextFontSize = 11;     // Taille de police initiale
@@ -67,7 +71,7 @@ namespace AIMailer
         private const int buttonXOffset = 1, buttonYOffset = 10, buttonYSpace = 10;
         private const int buttonWidth = 110, buttonHeight = 30;
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
-        private static readonly  Color MyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
+        private static readonly Color MyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
         private static readonly Color MyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
         private static readonly Color MyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
         private static readonly Color editeurBackColor = MyColorBluePale1;
@@ -91,37 +95,38 @@ namespace AIMailer
                 { "ERROR_EDITOR_APPRESTART",       "Impossible de redémarrer l'application !" },
                 { "ERROR_EDITOR_IASERVICEUNKNOW",  "Appel impossible car aucun service d'IA n'est sélectionné !" },
                 { "ERROR_EDITOR_IAMODELUNKNOWN",   "Appel impossible car type de modèle inconnu !" }
-
         };
 
         // Application Editor Text Box 
-        private TextBox aiMailerEditor;
-        private ToolStripLabel labelServiceModel; // 🆗 Déclaration correcte
+        private TextBox aiMailerEditor;           // Editeur 
 
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Description des Services & Actions d'IA **********************
         ///// **********************************************************************
         ///// **********************************************************************
-        /*
         public enum AIModelType
         {
-            "Chat",         // Utilise le format messages[] (avec rôle : system, user, assistant)
-            "Completion"    // Utilise le format textuel classique (prompt + réponse)
+            Chat,             // Utilise le format messages (avec rôles: system, user)
+            ChatTokens,       // Idem Chat avec Max Tokens
+            ChatUser,         // Idem Chat mais avec Role User (sans Role System)
+            ChatUserMin,      // Idem ChatUser mais sans Contexte
+            ChatUserTokens,   // Idem ChatUser avec Max Tokens
+            Completion,       // Utilise le format prompt 
+            CompletionMin,    // Idem Completion sans Contexte
+            CompletionTokens, // Idem Completion avec Max Tokens
         }
-        */
+
         // Description des Services possibles 
         private class AIModel
         {
             public string Id { get; set; }         // Model Id - Eg. "Mist7B"
             public string Name { get; set; }       // Model Mane - Eg. "Mistral 7B"
-            public string ModelType { get; set; }  // Model Type - Eg. "Chat", "Completion", "ChatTokens",... 
+            public AIModelType Type { get; set; }  // Model Type - Eg. "Chat", "Completion", "ChatTokens",...
             public string Url { get; set; }        // URL - Eg. "/v1/chat/completions"
             public string Model { get; set; }      // Model package - Eg. "Mistral-7B-...."
-            public string ServiceId { get; set; }  // LMS, GPT, ....
             public double TemperatureDelta { get; set; }    // Temperature
             public int TokensMax { get; set; }              // Max Tokens
-
         }
 
         // Liste des Services IA possibles
@@ -215,7 +220,7 @@ namespace AIMailer
                     // Parsing de la réponse selon le type de Modèle (Chat vs Completion) avec remplacement des \n par NewLine
                     var responseJson = await response.Content.ReadAsStringAsync();
                     using (JsonDocument doc = JsonDocument.Parse(responseJson))
-                        if (aiMailerAIModelActif.ModelType.Substring(0, 4) == "Chat")
+                        if (aiMailerAIModelActif.Type.ToString().Substring(0, 4) == AIModelType.Chat.ToString())
                             AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString()?.Replace("\n", Environment.NewLine));
                         else
                             AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("text").GetString()?.Replace("\n", Environment.NewLine));
@@ -238,7 +243,7 @@ namespace AIMailer
             // Temperature with model ratio
             double calcTemp = action.Temperature * (aiMailerAIModelActif.TemperatureDelta > 0 ? aiMailerAIModelActif.TemperatureDelta : 1);
             string model = aiMailerAIModelActif.Model;
-            string modelType = aiMailerAIModelActif.ModelType;
+            string typeString = aiMailerAIModelActif.Type.ToString();
             string actionPrompt = action.Prompt;
             string minPrompt = actionPrompt + " " + texteUtilisateur;
             string fullActionPrompt = aiMailerAIServiceActif.Context + " " + actionPrompt;
@@ -249,10 +254,10 @@ namespace AIMailer
             object returnedObject = null;
 
             // Build Prompt depending on Actif Model
-            switch (modelType)
+            switch (aiMailerAIModelActif.Type)
             {
-                case "Chat":                // Modèle Chat : Roles System + User (standard)
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, modelType, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
+                case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
+                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -261,8 +266,8 @@ namespace AIMailer
                     };
                     break;
 
-                case "ChatTokens":          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, modelType, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
+                case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
+                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -272,8 +277,8 @@ namespace AIMailer
                     };
                     break;
 
-                case "ChatUser":            // Modèle ChatUser: Role User 
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, modelType, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                case AIModelType.ChatUser:            // Modèle ChatUser: Role User 
+                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -282,8 +287,8 @@ namespace AIMailer
                     };
                     break;
 
-                case "ChatUserTokens":      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, modelType, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
+                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -292,26 +297,26 @@ namespace AIMailer
                     };
                     break;
 
-                case "ChatUserMin":         // Modèle ChatTokens: Role User with min. Prompt (no Prompt Context)
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, modelType, notApplString, minPrompt, calcTemp, notApplTokens);
+                case AIModelType.ChatUserMin:         // Modèle ChatTokens: Role User with min. Prompt (no Prompt Context)
+                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model, messages = new[] { new { role = "user", content = minPrompt } }, temperature = calcTemp
                     };
                     break;
 
-                case "Completion":          // Modèle Completion: Prompt 
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, modelType, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                case AIModelType.Completion:          // Modèle Completion: Prompt 
+                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp };
                     break;
 
-                case "CompletionTokens":    // Modèle Completion: Prompt + MaxTokens
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, modelType, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
+                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax };
                     break;
 
-                case "CompletionMin":       // Modèle Completion: Prompt (no Prompt Context) 
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, modelType, minPrompt, calcTemp, notApplTokens);
+                case AIModelType.CompletionMin:       // Modèle Completion: Prompt (no Prompt Context) 
+                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = minPrompt, temperature = calcTemp };
                     break;
 
@@ -376,32 +381,36 @@ namespace AIMailer
             string configFilePath = Path.Combine(Application.StartupPath, aiMailerConfigFile);
             aiMailerAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
 
-            // Lecture du fichier s'il existe
-            if (File.Exists(configFilePath))
-            {
-                try
-                {
-                    // Lecture et parsing du fichier json
-                    string json = File.ReadAllText(configFilePath);
-                    var config = JsonSerializer.Deserialize<AIMailerConfigurationFile>(json,
-                            new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    // Parsing des Actions et des Services
-                    aiMailerAIActions = config.Actions ?? new List<AIAction>();
-                    aiMailerAIServices = config.Services ?? new List<AIService>();
-
-                    // 
-                    aiMailerAIServiceActif = aiMailerAIServices.FirstOrDefault(); // ✅ Premier service disponible
-                    aiMailerAIModelActif = aiMailerAIServiceActif?.Models?.FirstOrDefault(); // ✅ Premier modèle de ce service
-
-                }
-                catch (Exception ex)    // Erreur Fichier mal formatté
-                {
-                    ErrorShow("ERROR_EDITOR_CFGFILEBAD", ex.Message, Application.StartupPath, aiMailerConfigFile);
-                }
-            }
             // Erreur Fichier absent ou non accessible (droits)
-            else ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", Application.StartupPath, aiMailerConfigFile);
-        } 
+            if (!File.Exists(configFilePath))
+            {
+                ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", Application.StartupPath, aiMailerConfigFile);
+                return;
+            }
+
+            // Lecture et désérialisation du fichier de configuration
+            try
+            {
+                // Lecture et parsing du fichier json
+                string json = File.ReadAllText(configFilePath);
+
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                options.Converters.Add(new JsonStringEnumConverter()); // Lecture Enumeration (pr ModelType)
+
+                var config = JsonSerializer.Deserialize<AIMailerConfigurationFile>(json, options);
+                // Parsing des Actions et des Services
+                aiMailerAIActions = config.Actions ?? new List<AIAction>();
+                aiMailerAIServices = config.Services ?? new List<AIService>();
+
+                aiMailerAIServiceActif = aiMailerAIServices.FirstOrDefault(); // ✅ Premier service disponible
+                aiMailerAIModelActif = aiMailerAIServiceActif?.Models?.FirstOrDefault(); // ✅ Premier modèle de ce service
+            }
+            catch (Exception ex)    // Erreur Fichier mal formatté
+            {
+                ErrorShow("ERROR_EDITOR_CFGFILEBAD", ex.Message, Application.StartupPath, aiMailerConfigFile);
+            }
+        }
+
         // Structure de Parsing du fichier de configuration
         private class AIMailerConfigurationFile
         {
@@ -577,10 +586,28 @@ namespace AIMailer
             menuConfig.DropDownItems.Add(menuActualiserConfig);
             menuStrip.Items.Add(menuConfig);
 
+            /// *************************************************************
+            /// ***** Création du Label de Menu Service et Modèle ***********
+            /// *************************************************************
+            ToolStripLabel labelServiceModel = new ToolStripLabel
+                        {
+                            Text = BuildServiceAndModelLabel(),
+                            Font = new Font(this.Font.FontFamily, editeurMenuFontSize - 1),
+                            ForeColor = editeurMenuForeColor,
+                            Alignment = ToolStripItemAlignment.Right,
+                            Margin = new Padding(0, 0, textXOffset, 0)
+                        };
+            menuStrip.Items.Add(labelServiceModel);
+
+            // Ajout de l'ensemble du Menu à la fenêtre
+            this.MainMenuStrip = menuStrip;
+            this.Controls.Add(menuStrip);
+
             /// ********************************************************
             /// ***** Création du menu "Services et Modèles" ***********
             /// ********************************************************
             ToolStripMenuItem menuService = new ToolStripMenuItem(textFileMenuModeleLabel);
+
             // Si la liste n'est pas vide
             if (aiMailerAIServices != null && aiMailerAIServices.Count > 0)
             {
@@ -615,23 +642,6 @@ namespace AIMailer
             // Ajouter le Menu Service
             menuStrip.Items.Add(menuService);
 
-            /// *************************************************************
-            /// ***** Création du Label de Menu Service et Modèle ***********
-            /// *************************************************************
-            labelServiceModel = new ToolStripLabel
-            {
-                Text = BuildServiceAndModelLabel(),
-                Font = new Font(this.Font.FontFamily, editeurMenuFontSize - 1),
-                ForeColor = editeurMenuForeColor,
-                Alignment = ToolStripItemAlignment.Right,
-                Margin = new Padding(0, 0, textXOffset, 0)
-            };
-            menuStrip.Items.Add(labelServiceModel);
-
-            // Ajout de l'ensemble du Menu à la fenêtre
-            this.MainMenuStrip = menuStrip;
-            this.Controls.Add(menuStrip);
-
             // Retourne la taille de la ligne de menu
             return (menuStrip.Height);
         }
@@ -644,7 +654,7 @@ namespace AIMailer
             return string.Format(stringMaskServiceAndModel,
                 (aiMailerAIServiceActif == null ? aiMailerServiceAbsent : aiMailerAIServiceActif.Name),
                 (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Name),
-                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.ModelType) );
+                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Type.ToString()) );
         }
 
         /// ********************************************************
