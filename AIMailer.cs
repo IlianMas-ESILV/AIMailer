@@ -16,7 +16,7 @@ using System.Windows.Forms;
 
 namespace AIMailer
 {
-    public partial class Form1 : Form
+    public partial class AIMailer : Form
     {
         /* Context Prompt pour mémo 
             Tu es un assistant IA francophone expert en rédaction, traduction et synthèse de texte. 
@@ -212,13 +212,13 @@ namespace AIMailer
                     // Vérification du code retour http
                     response.EnsureSuccessStatusCode();
 
-                    // Parsing de la réponse selon le type de Modèle (Chat vs Completion)
+                    // Parsing de la réponse selon le type de Modèle (Chat vs Completion) avec remplacement des \n par NewLine
                     var responseJson = await response.Content.ReadAsStringAsync();
                     using (JsonDocument doc = JsonDocument.Parse(responseJson))
                         if (aiMailerAIModelActif.ModelType.Substring(0, 4) == "Chat")
-                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString());
+                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString()?.Replace("\n", Environment.NewLine));
                         else
-                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("text").GetString());
+                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("text").GetString()?.Replace("\n", Environment.NewLine));
                 }
                 catch (Exception ex)
                 {
@@ -354,13 +354,13 @@ namespace AIMailer
         ///// **********************************************************************
 
         // Initialisation de la fenêtre par appel à la fonction générée par Visual Studio
-        public Form1()
+        public AIMailer()
         {
             InitializeComponent();       // Fonction générée par VS dans Form1.Designer
         }
 
         // lancement de l'application par la fct appelée après création de la fenêtre
-        private void Form1_Load(object sender, EventArgs e)
+        private void AIMailer_Load(object sender, EventArgs e)
         {
             LoadConfigurationFromFile(); // Lecture de la configuration de l'appli
             InitialiserInterface();      // Adaptation de la fenêtre

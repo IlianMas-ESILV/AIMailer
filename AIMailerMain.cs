@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace AIMailer
 {
-    static class Program
+    static class AIMailerMain
     {
         /// <summary>
         /// Point d'entrée principal de l'application.
@@ -16,7 +16,7 @@ namespace AIMailer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new Form1());
+            Application.Run(new AIMailer());
         }
     }
 }
