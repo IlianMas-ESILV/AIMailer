@@ -8,9 +8,9 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyTitle("AiMailer")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("LG")]
+[assembly: AssemblyCompany("(c) IFT")]
 [assembly: AssemblyProduct("AiMailer")]
-[assembly: AssemblyCopyright("Copyright © LG 2025")]
+[assembly: AssemblyCopyright("Copyright © IFT 2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

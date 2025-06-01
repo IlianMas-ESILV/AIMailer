@@ -1,0 +1,10 @@
+Bonjour,
+
+J'espère que vous allez bien.
+
+Je vous écris ce mail afin de vous informer que notre projet avance bien. Il s'appelle maintenant AIMailer. Le développement avance régulièrement et l'industrialisation du POC pour en faire une solution fiable et maintenable est en bonne voie.
+
+En résumé, nous avons terminé 80% du développement des fonctions demandées, et les fonctions complémentaires sont en cours d'incorporation.
+
+Bien à vous,
+L'Equipe AIMailer 
