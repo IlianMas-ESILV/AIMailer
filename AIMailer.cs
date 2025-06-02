@@ -40,16 +40,16 @@ namespace AIMailer
         private const string textFileMenuRestartLabel = "Actualiser la configuration...";
         private const string textFontSliderLabel = "Police : ";
         private const string textFileMenuTextLabel = "Texte";
-        private const string configMenuTextLabel = "Config";
-        private const string textFileMenuModeleLabel = "Modèle";
+        private const string configMenuTextLabel = "Configuration";
+        private const string textFileMenuModeleLabel = "Modèles";
         private const string textFileMenuFilter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*";
         private const string aiMailerRestartWarningTitle = "Confirmation de redémarrage";
         private const string aiMailerRestartWarning = "Le texte actuel sera perdu.Voulez-vous vraiment actualiser les actions et relancer l'application ?";
         private const string aiMailerServiceAbsent = "Service: N/C";        // Service AI absent
         private const string aiMailerModeleAbsent = "Modèle: N/C";          // Modèle AI absent
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
-        private const string stringMaskCompletionPopupPrompt = "Appel à l'IA en cours... \n\n\n\n[Modèle] '{0}'\n\n[Type] '{1}'\n\n[Prompt] {2}'\n\n[temperature] {3}\n\n[max_tokens] {4}";
-        private const string stringMaskChatPopupPrompt = "Appel à l'IA en cours... \n\n\n\n[Modèle] '{0}'\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}";
+        private const string stringMaskCompletionPopupPrompt = "Appel à l'IA avec... \n\n[Modèle] '{0}'\n\n[Type] '{1}'\n\n[Prompt] {2}'\n\n[temperature] {3}\n\n[max_tokens] {4}";
+        private const string stringMaskChatPopupPrompt = "Appel à l'IA avec... \n\n[Modèle] '{0}'\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}";
         private const string aiMailerErrorStringEmpty = "<vide>";
         private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
@@ -180,7 +180,7 @@ namespace AIMailer
             // Erreur bloquante si aucun texte à traiter
             if (string.IsNullOrWhiteSpace(texteUtilisateur))
             {
-                ErrorShow("ERROR_EDITOR_EMPTYSELECTION", action.Name, texteUtilisateur);
+                ErrorShow("ERROR_EDITOR_EMPTYSELECTION", action.Name);
                 return;
             }
 
@@ -250,14 +250,14 @@ namespace AIMailer
             string fullActionAndUserPrompt = fullActionPrompt + " " + texteUtilisateur;
             string notApplString = "N/A";
             int notApplTokens = 0;
-            string returnedPrompt = null;
+            string promptToShow = null;
             object returnedObject = null;
 
             // Build Prompt depending on Actif Model
             switch (aiMailerAIModelActif.Type)
             {
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
+                    promptToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -265,9 +265,9 @@ namespace AIMailer
                         temperature = calcTemp
                     };
                     break;
-
+             
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
+                    promptToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -278,7 +278,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUser:            // Modèle ChatUser: Role User 
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    promptToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -288,7 +288,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                    promptToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -298,7 +298,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserMin:         // Modèle ChatTokens: Role User with min. Prompt (no Prompt Context)
-                    returnedPrompt = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
+                    promptToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model, messages = new[] { new { role = "user", content = minPrompt } }, temperature = calcTemp
@@ -306,27 +306,27 @@ namespace AIMailer
                     break;
 
                 case AIModelType.Completion:          // Modèle Completion: Prompt 
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    promptToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp };
                     break;
 
                 case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                    promptToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax };
                     break;
 
                 case AIModelType.CompletionMin:       // Modèle Completion: Prompt (no Prompt Context) 
-                    returnedPrompt = string.Format(stringMaskCompletionPopupPrompt, model, typeString, minPrompt, calcTemp, notApplTokens);
+                    promptToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = minPrompt, temperature = calcTemp };
                     break;
 
                 default:                    // Unknown Active Model error
-                    ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", fullActionAndUserPrompt, texteUtilisateur);
+                    ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", aiMailerAIServiceActif.Context, actionPrompt, texteUtilisateur, aiMailerAIModelActif.TokensMax.ToString());
                     break;
             }
 
             // Affichage d'une fenetre d'affichage de l'appel avec le message
-            MsgBoxTools.ShowAutoClose(returnedPrompt);
+            MsgBoxTools.ShowAutoClose(promptToShow);
 
             // Return built Object (or null on error)
             return (returnedObject);
@@ -739,18 +739,18 @@ namespace AIMailer
             if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
                 msgLabel = string.Format(maskErrorMsgUnknown,msgKey);
             MessageBox.Show(msgLabel
-                   + (errorLevel1 == "" ? aiMailerErrorStringEmpty : "\n\n[Level1] " +
+                   + (errorLevel1 == "" ? "" : "\n\n[Level1] " +
                             (errorLevel1.Length < aiMailerErrorStringLenghtMax ? errorLevel1 : 
                                 errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
-                   + (errorLevel2 == "" ? aiMailerErrorStringEmpty : "\n\n[Level2] " +
+                   + (errorLevel2 == "" ? "" : "\n\n[Level2] " +
                             (errorLevel2.Length < aiMailerErrorStringLenghtMax ? errorLevel2 :
-                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
-                   + (errorLevel3 == "" ? aiMailerErrorStringEmpty : "\n\n[Level3] " +
+                                errorLevel2.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                   + (errorLevel3 == "" ? "" : "\n\n[Level3] " +
                             (errorLevel3.Length < aiMailerErrorStringLenghtMax ? errorLevel3 :
-                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
-                   + (errorLevel4 == "" ? aiMailerErrorStringEmpty : "\n\n[Level4] " +
+                                errorLevel3.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                   + (errorLevel4 == "" ? "" : "\n\n[Level4] " +
                             (errorLevel4.Length < aiMailerErrorStringLenghtMax ? errorLevel4 :
-                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                                errorLevel4.Substring(0, aiMailerErrorStringLenghtMax) + cut))
 
                    + "\n\n[Modèle] " + BuildServiceAndModelLabel());
         }
@@ -758,6 +758,7 @@ namespace AIMailer
         /// *************************************************************
         /// ***** Fonction générique d'affichage d'une sous-fenetre *****
         /// ***** pendant: aiMailerAICallMsgBoxTimer millisec       *****
+        /// ***** avec Bouton "Ok"                                  *****
         /// *************************************************************
         public static class MsgBoxTools
         {

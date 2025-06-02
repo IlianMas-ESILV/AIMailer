@@ -5,7 +5,7 @@
       "Prompt": "Traduis précisément ce texte en français : "
     },
     {
-      "Id": "Resumer", "Name": "Résumer", "Temperature": 0.7,
+      "Id": "Resumer", "Name": "Résumer", "Temperature": 0.1,
       "Prompt": "Fais un résumé clair et concis du texte suivant : "
     },
     {
@@ -45,6 +45,15 @@
 			  "TokensMax": 0
 			},
 			{
+			  "Id": "openchat3.5",
+			  "Name": "OpenChat 3.5 1210",
+			  "Type": "Chat",
+			  "Url": "/v1/chat/completions",
+			  "Model": "openchat-3.5-1210",
+			  "TemperatureDelta": 1,
+			  "TokensMax": 0
+			},
+			{
 			  "Id": "Mist7B0.1",
 			  "Name": "Mistral 7B Instruct v0.1 Q4KM",
 			  "Type": "ChatUser",
@@ -69,15 +78,6 @@
 			  "Type": "Chat",
 			  "Url": "/v1/chat/completions",
 			  "Model": "deepseek-coder-6.7b-instruct",
-			  "TemperatureDelta": 1,
-			  "TokensMax": 0
-			},
-			{
-			  "Id": "openchat3.5",
-			  "Name": "OpenChat 3.5 1210",
-			  "Type": "Chat",
-			  "Url": "/v1/chat/completions",
-			  "Model": "openchat-3.5-1210",
 			  "TemperatureDelta": 1,
 			  "TokensMax": 0
 			}
