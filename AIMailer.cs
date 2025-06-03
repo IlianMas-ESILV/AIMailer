@@ -29,7 +29,7 @@ namespace AIMailer
         // ***********************************************
         // ***** Noms et chaines de caractères ***********
         // ***********************************************
-        private const string aiMailerConfigFile = "AIMailer.json";
+        private const string aiMailerConfigFile = "AIMailer.cfg";
         private const string aiMailerNotepadExe = "notepad.exe";
         private const string aiMailerName = "AIMailer";
         private const string aiMailerEditorName = "aiMailerEditor";

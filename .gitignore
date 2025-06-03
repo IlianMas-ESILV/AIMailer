@@ -7,3 +7,4 @@ bin/
 obj/
 /.gitignore
 /AIMailer.svg.cs
+/AIMailer.json
