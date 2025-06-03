@@ -243,6 +243,7 @@ namespace AIMailer
             // Temperature with model ratio
             double calcTemp = action.Temperature * (aiMailerAIModelActif.TemperatureRatio > 0 ? aiMailerAIModelActif.TemperatureRatio : 1);
             string model = aiMailerAIModelActif.Model;
+            string serviceAndModel = BuildServiceAndModelLabel();
             string typeString = aiMailerAIModelActif.Type.ToString();
             string actionPrompt = action.Prompt;
             string minPrompt = actionPrompt + " " + texteUtilisateur;
@@ -257,7 +258,7 @@ namespace AIMailer
             switch (aiMailerAIModelActif.Type)
             {
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -267,7 +268,7 @@ namespace AIMailer
                     break;
              
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -277,7 +278,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUser:            // Modèle ChatUser: Role User 
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model,
@@ -287,7 +288,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
@@ -297,7 +298,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserMin:         // Modèle ChatTokens: Role User with min. Prompt (no Prompt Context)
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, model, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = model, messages = new[] { new { role = "user", content = minPrompt } }, temperature = calcTemp
@@ -305,17 +306,17 @@ namespace AIMailer
                     break;
 
                 case AIModelType.Completion:          // Modèle Completion: Prompt 
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp };
                     break;
 
                 case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax };
                     break;
 
                 case AIModelType.CompletionMin:       // Modèle Completion: Prompt (no Prompt Context) 
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, model, typeString, minPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = model, prompt = minPrompt, temperature = calcTemp };
                     break;
 
