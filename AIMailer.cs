@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Media;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Reflection;
 using System.Runtime.InteropServices;
+using System.Runtime.Remoting.Messaging;
 using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
@@ -30,6 +32,7 @@ namespace AIMailer
         // ***** Noms et chaines de caractères ***********
         // ***********************************************
         private const string aiMailerConfigFile = "AIMailer.cfg";
+        private const string aiMailerAutoSaveFile = "AIMailer.AutoSave.txt"; // 💾 AUTOSAVE : fichier de sauvegarde auto
         private const string aiMailerNotepadExe = "notepad.exe";
         private const string aiMailerName = "AIMailer";
         private const string aiMailerEditorName = "aiMailerEditor";
@@ -38,13 +41,19 @@ namespace AIMailer
         private const string textFileMenuTextSaveLabel = "Enregistrer sous...";
         private const string textFileMenuConfigEditLabel = "Éditer la configuration";
         private const string textFileMenuRestartLabel = "Actualiser la configuration...";
+        private const string textEditorAnnulerMenuLabel = "Annuler (Ctrl-Z)";
+        private const string textEditorRefaireMenuLabel = "Refaire (Ctrl-Y)";
+        private const string textEditorCouperMenuLabel = "Couper (Ctrl+X)";
+        private const string textEditorCopierMenuLabel = "Copier (Ctrl+C)";
+        private const string textEditorCollerMenuLabel = "Coller (Ctrl+V)";
+        private const string textEditorSelectionnerMenuLabel = "Tout sélectionner (Ctrl+A)";
         private const string textFontSliderLabel = "Police : ";
         private const string textFileMenuTextLabel = "Texte";
         private const string configMenuTextLabel = "Configuration";
         private const string textFileMenuModeleLabel = "Modèles";
         private const string textFileMenuFilter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*";
         private const string aiMailerRestartWarningTitle = "Confirmation de redémarrage";
-        private const string aiMailerRestartWarning = "Le texte actuel sera perdu.Voulez-vous vraiment actualiser les actions et relancer l'application ?";
+        private const string aiMailerRestartAutoSaveWarning = "Le texte actuel ne peut pas être sauvegardé.\nVoulez-vous vraiment actualiser les actions et relancer l'application ?";
         private const string aiMailerServiceAbsent = "Service: N/C";        // Service AI absent
         private const string aiMailerModeleAbsent = "Modèle: N/C";          // Modèle AI absent
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
@@ -83,7 +92,9 @@ namespace AIMailer
         private static readonly Color buttonBackColor = MyColorBluePale2;
         private static readonly Color buttonForeColor = MyColorBlueDark;
 
-        // Error messages 
+        // ********************************
+        // ***** Error Messages ***********
+        // ***************** **************
         private const string maskErrorMsgUnknown = "Code Erreur inconnu : {0}"; // Recois le code inconnu
         private static readonly Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
         {
@@ -97,8 +108,12 @@ namespace AIMailer
             { "ERROR_EDITOR_IAMODELUNKNOWN",   "Appel impossible car type de modèle inconnu !" }
         };
 
-        // Application Editor Text Box 
-        private TextBox aiMailerEditor;           // Editeur 
+        // **************************************
+        // ***** Variables "Globales" ***********
+        // **************************************
+        private TextBox aiMailerEditor;                                //    Application Editor Text Box 
+        private Stack<string> aiMailerUndoStack = new Stack<string>(); // 🔁 Pile la fonction Undo
+        private Stack<string> aiMailerRedoStack = new Stack<string>(); // 🔁 Pile la fonction Redo
 
         ///// **********************************************************************
         ///// **********************************************************************
@@ -229,15 +244,12 @@ namespace AIMailer
                 {
                     ErrorShow("ERROR_EDITOR_IACALL", ex.Message, iaRequestBody.ToString());
                 }
-               // aiMailerAIModelActif.ModelType, model, fullActionAndUserPrompt, texteUtilisateur
             }
         }
 
         /// *************************************************************************
         /// ***** Construction du Prompt à envoyer à l'IA selon le Modèle actif *****
         /// *************************************************************************
-        //        private const string stringMaskChatPopupPrompt = "model='{0}' [System]'{1}' [User]'{2}'temperature={3}, max_tokens={4}";
-        //        private const string stringMaskCompletionPopupPrompt = "model='{0}' prompt='{1}' temperature={2}, max_tokens={3}";
         private object AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur)
         {
             // Temperature with model ratio
@@ -337,6 +349,10 @@ namespace AIMailer
         /// **********************************************************************
         private void AIMAilerAIReplyReplace(string aiReponseTexte)
         {
+            // 🔁 UNDO/REDO : sauvegarde l'état actuel, vide le redo
+            aiMailerUndoStack.Push(aiMailerEditor.Text);
+            aiMailerRedoStack.Clear();
+
             // Remplacement de l'intégralité du texte (si aucun texte n'est sélectionné)
             if (string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText))
                 aiMailerEditor.Text = aiReponseTexte;
@@ -369,6 +385,7 @@ namespace AIMailer
         {
             LoadConfigurationFromFile(); // Lecture de la configuration de l'appli
             InitialiserInterface();      // Adaptation de la fenêtre
+            RestaurerTexteAutoSave(); // 💾 AUTOSAVE
         }
 
         ///// **********************************************************************
@@ -466,7 +483,105 @@ namespace AIMailer
                 ScrollBars = ScrollBars.Vertical,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
+
+            // ************************************************
+            // 🔁 MENU CONTEXTUEL avec Undo/Redo
+            // ************************************************
+            ContextMenu contextMenu = new ContextMenu();
+            MenuItem undoMenuItem = new MenuItem(textEditorAnnulerMenuLabel);
+            undoMenuItem.Click += (s, e) => UndoLastChange();
+            contextMenu.MenuItems.Add(undoMenuItem);
+            MenuItem redoMenuItem = new MenuItem(textEditorRefaireMenuLabel);
+            redoMenuItem.Click += (s, e) => RedoLastChange();
+            contextMenu.MenuItems.Add(redoMenuItem);
+            contextMenu.MenuItems.Add("-");
+            MenuItem cutMenuItem = new MenuItem(textEditorCouperMenuLabel);
+            cutMenuItem.Click += (s, e) => 
+            {
+                aiMailerUndoStack.Push(aiMailerEditor.Text);
+                aiMailerRedoStack.Clear();
+                aiMailerEditor.Cut();
+            };
+            contextMenu.MenuItems.Add(cutMenuItem);
+            MenuItem copyMenuItem = new MenuItem(textEditorCopierMenuLabel);
+            copyMenuItem.Click += (s, e) => aiMailerEditor.Copy();
+            contextMenu.MenuItems.Add(copyMenuItem);
+            MenuItem pasteMenuItem = new MenuItem(textEditorCollerMenuLabel);
+            pasteMenuItem.Click += (s, e) =>
+            {
+                aiMailerUndoStack.Push(aiMailerEditor.Text);
+                aiMailerRedoStack.Clear();
+                aiMailerEditor.Paste();
+            };
+            contextMenu.MenuItems.Add(pasteMenuItem);
+            MenuItem selectAllMenuItem = new MenuItem(textEditorSelectionnerMenuLabel);
+            selectAllMenuItem.Click += (s, e) => aiMailerEditor.SelectAll();
+            contextMenu.MenuItems.Add(selectAllMenuItem);
+
+            // Gestion du Undo pour l'écriture 
+            aiMailerEditor.KeyDown += (s, e) =>
+            {
+                if (e.Control && e.KeyCode == Keys.Y)
+                {
+                    RedoLastChange();
+                    e.SuppressKeyPress = true;
+                }
+                else if (!e.Control && !e.Alt && e.KeyCode != Keys.ShiftKey)
+                {
+                    aiMailerUndoStack.Push(aiMailerEditor.Text);
+                    aiMailerRedoStack.Clear();
+                }
+            };
+
+            aiMailerEditor.ContextMenu = contextMenu;
             this.Controls.Add(aiMailerEditor);
+        }
+
+        // 🔁 AJOUT UNDO : méthode pour annuler la dernière modification IA
+        private void UndoLastChange()
+        {
+            // Empile l'Editeur sur le Redo et le remplace par un Dépile du Undo 
+            if (aiMailerUndoStack.Count > 0)
+            {
+                aiMailerRedoStack.Push(aiMailerEditor.Text);
+                aiMailerEditor.Text = aiMailerUndoStack.Pop();
+            }
+            else
+                SystemSounds.Beep.Play(); // Aucun texte à annuler
+        }
+        /// 🔁 REDO : rétablir après un undo
+        private void RedoLastChange()
+        {
+            // Empile l'Editeur sur le Undo et le remplace par un Dépile du Redo
+            if (aiMailerRedoStack.Count > 0)
+            {
+                aiMailerUndoStack.Push(aiMailerEditor.Text);
+                aiMailerEditor.Text = aiMailerRedoStack.Pop();
+            }
+            else
+                SystemSounds.Beep.Play();
+        }
+
+        /// 🔁 GESTION CLAVIER Ctrl+Z / Ctrl+Y
+        protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+        {
+            bool rtn = true;
+            if (keyData == (Keys.Control | Keys.Z))
+                UndoLastChange();
+            else if (keyData == (Keys.Control | Keys.Y))
+                RedoLastChange();
+            else rtn = base.ProcessCmdKey(ref msg, keyData);
+            return rtn;
+        }
+
+        /// 💾 RESTAURER AUTO SAUVEGARDE
+        private void RestaurerTexteAutoSave()
+        {
+            string autosavePath = Path.Combine(Application.StartupPath, aiMailerAutoSaveFile);
+            if (File.Exists(autosavePath))
+            {
+                aiMailerEditor.Text = File.ReadAllText(autosavePath);
+            }
         }
 
         // Curseur de changement de taille de fonte
@@ -564,12 +679,20 @@ namespace AIMailer
 
             // Création du menu "Fichier"
             ToolStripMenuItem menuFichier = new ToolStripMenuItem(textFileMenuTextLabel);
+            ToolStripMenuItem menuAnnuler = new ToolStripMenuItem(textEditorAnnulerMenuLabel);
+            ToolStripMenuItem menuRefaire = new ToolStripMenuItem(textEditorRefaireMenuLabel);
             ToolStripMenuItem menuOuvrir = new ToolStripMenuItem(textFileMenuTextOpenLabel);
             ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem(textFileMenuTextSaveLabel);
+
+            menuAnnuler.Click += (s, e) => UndoLastChange();
+            menuRefaire.Click += (s, e) => RedoLastChange();
 
             menuOuvrir.Click += MenuOuvrir_Click;
             menuEnregistrer.Click += MenuEnregistrer_Click;
 
+            menuFichier.DropDownItems.Add(menuAnnuler);
+            menuFichier.DropDownItems.Add(menuRefaire);
+            menuFichier.DropDownItems.Add(new ToolStripSeparator());
             menuFichier.DropDownItems.Add(menuOuvrir);
             menuFichier.DropDownItems.Add(menuEnregistrer);
             menuStrip.Items.Add(menuFichier);
@@ -668,7 +791,10 @@ namespace AIMailer
             OpenFileDialog openFileDialog = new OpenFileDialog { Filter = textFileMenuFilter };
             // Copier son contenu dans l'Editeur
             if (openFileDialog.ShowDialog() == DialogResult.OK)
+            {
+                aiMailerUndoStack.Push(aiMailerEditor.Text);
                 aiMailerEditor.Text = System.IO.File.ReadAllText(openFileDialog.FileName);
+            }
         }
 
         // Menu Fichier : Enregistrer le contenu de l'Editeur dans un fichier
@@ -706,9 +832,17 @@ namespace AIMailer
             // Demander une confirmation de relance si l'éditeur contient du texte
             if (!string.IsNullOrWhiteSpace(aiMailerEditor.Text))
             {
-                DialogResult result = MessageBox.Show(aiMailerRestartWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                if (result != DialogResult.Yes)
-                    return; // Annuler le redémarrage si refus de l'utilisateur
+                // Sauvegarde du contenu de l'éditeur dans un fichier local
+                try
+                {
+                    File.WriteAllText(Path.Combine(Application.StartupPath, aiMailerAutoSaveFile), aiMailerEditor.Text);
+                }
+                catch {
+                    // Si impossible demande de confirmation à l'utilisateur
+                    DialogResult result = MessageBox.Show(aiMailerRestartAutoSaveWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (result != DialogResult.No)
+                            return; // Annuler le redémarrage si refus de l'utilisateur
+                }
             }
             // Relancer l'application 
             try
