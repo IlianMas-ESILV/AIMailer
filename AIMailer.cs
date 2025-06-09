@@ -42,7 +42,7 @@ namespace AIMailer
         private const string textFileMenuConfigEditLabel = "Éditer la configuration";
         private const string textFileMenuRestartLabel = "Actualiser la configuration...";
         private const string textEditorAnnulerMenuLabel = "Annuler (Ctrl-Z)";
-        private const string textEditorRefaireMenuLabel = "Refaire (Ctrl-Y)";
+        private const string textEditorRefaireMenuLabel = "Rétablir (Ctrl-Y)";
         private const string textEditorCouperMenuLabel = "Couper (Ctrl+X)";
         private const string textEditorCopierMenuLabel = "Copier (Ctrl+C)";
         private const string textEditorCollerMenuLabel = "Coller (Ctrl+V)";
@@ -51,6 +51,7 @@ namespace AIMailer
         private const string textFileMenuTextLabel = "Texte";
         private const string configMenuTextLabel = "Configuration";
         private const string textFileMenuModeleLabel = "Modèles";
+        private const string btnConfigLabel = "\u2699"; // "⚙"; 
         private const string textFileMenuFilter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*";
         private const string aiMailerRestartWarningTitle = "Confirmation de redémarrage";
         private const string aiMailerRestartAutoSaveWarning = "Le texte actuel ne peut pas être sauvegardé.\nVoulez-vous vraiment actualiser les actions et relancer l'application ?";
@@ -79,18 +80,20 @@ namespace AIMailer
         private const int textWidth = 600, textHeight = 400;
         private const int buttonXOffset = 1, buttonYOffset = 10, buttonYSpace = 10;
         private const int buttonWidth = 110, buttonHeight = 30;
+        private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
         private static readonly Color MyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
         private static readonly Color MyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
         private static readonly Color MyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
+        private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
         private static readonly Color editeurBackColor = MyColorBluePale1;
         private static readonly Color editeurMenuBackColor = MyColorBluePale2;
         private static readonly Color editeurMenuForeColor = MyColorBlueDark;
         private static readonly Color editeurCurseurForeColor = MyColorBlueDark;
-        private static readonly BorderStyle buttonPanelBorderStyle = BorderStyle.None;
         private static readonly Color buttonPanelBackColor = Color.Empty;
         private static readonly Color buttonBackColor = MyColorBluePale2;
         private static readonly Color buttonForeColor = MyColorBlueDark;
+        private static readonly BorderStyle buttonPanelBorderStyle = BorderStyle.None;
 
         // ********************************
         // ***** Error Messages ***********
@@ -108,75 +111,93 @@ namespace AIMailer
             { "ERROR_EDITOR_IAMODELUNKNOWN",   "Appel impossible car type de modèle inconnu !" }
         };
 
-        // **************************************
-        // ***** Variables "Globales" ***********
-        // **************************************
-        private TextBox aiMailerEditor;                                //    Application Editor Text Box 
-        private Stack<string> aiMailerUndoStack = new Stack<string>(); // 🔁 Pile la fonction Undo
-        private Stack<string> aiMailerRedoStack = new Stack<string>(); // 🔁 Pile la fonction Redo
+        // *************************************************
+        // ***** Variables "Globales" graphiques ***********
+        // *************************************************
+        private static TextBox aiMailerEditor = null;                                  //    Application Editor Text Box 
+        private static Stack<string> aiMailerUndoStack = new Stack<string>();          // 🔁 Pile la fonction Undo
+        private static Stack<string> aiMailerRedoStack = new Stack<string>();          // 🔁 Pile la fonction Redo
+
+        // *****************************************************
+        // ***** Variables "Globales" fonctionnelles ***********
+        // *****************************************************
+        private static List<AIService> aiMailerAIServices = null;               // Liste des Services IA configurés
+        private static List<AIAction> aiMailerAIActions = new List<AIAction>(); // Liste des Modèles IA configurés
+        private static AIService aiMailerAIServiceActif = null;                 // Ajout pour mémoriser le service actif
+        private static AIModel aiMailerAIModelActif = null;                     // Ajout pour mémoriser le modèle actif
+
 
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Description des Services & Actions d'IA **********************
         ///// **********************************************************************
         ///// **********************************************************************
+
+        // Description des Type de Modèles IA 
         public enum AIModelType
         {
             Chat,             // Utilise le format messages (avec rôles: system, user)
             ChatTokens,       // Idem Chat avec Max Tokens
-            ChatUser,         // Idem Chat mais avec Role User (sans Role System)
-            ChatUserMin,      // Idem ChatUser mais sans Contexte
+            ChatUser,         // Idem Chat mais avec Role User uniquement (sans Role System)
+            ChatUserMin,      // Idem ChatUser mais sans Contexte de prompt
             ChatUserTokens,   // Idem ChatUser avec Max Tokens
             Completion,       // Utilise le format prompt 
-            CompletionMin,    // Idem Completion sans Contexte
+            CompletionMin,    // Idem Completion sans Contexte de prompt
             CompletionTokens, // Idem Completion avec Max Tokens
         }
 
-        // Description des Services possibles 
+        // Description des Services IA 
         private class AIModel
         {
-            public string Id { get; set; }         // Model Id - Eg. "Mist7B"
-            public string Name { get; set; }       // Model Mane - Eg. "Mistral 7B"
-            public AIModelType Type { get; set; }  // Model Type - Eg. "Chat", "Completion", "ChatTokens",...
-            public string Url { get; set; }        // URL - Eg. "/v1/chat/completions"
-            public string Model { get; set; }      // Model package - Eg. "Mistral-7B-...."
-            public double TemperatureRatio { get; set; }    // Temperature
-            public int TokensMax { get; set; }              // Max Tokens
+            public string Id { get; set; }                  // Model Id - Eg. "Mist7B"
+            public string Name { get; set; }                // Model Mane - Eg. "Mistral 7B"
+            public AIModelType Type { get; set; }           // Model Type - Eg. "Chat", "Completion", "ChatTokens",...
+            public string Url { get; set; }                 // URL - Eg. "/v1/chat/completions"
+            public string Model { get; set; }               // Model package - Eg. "Mistral-7B-...."
+            public double TemperatureRatio { get; set; }    // Ponderation de Temperature par Modèle
+            public int TokensMax { get; set; }             // Max Tokens
+            public bool Default { get; set; }               // Modèle par Défaut
         }
-
-        // Liste des Services IA possibles
-        // private static List<AIModel> aiMailerAIModels = null;
-        private AIModel aiMailerAIModelActif = null;                   // Ajout pour mémoriser le modèle actif
-
 
         // Description des Services possibles : Id URi, URL, DefaultTemperature, Model list
         private class AIService
         {
-            public string Id { get; set; }       // Id du Service - Eg. LMS
-            public string Name { get; set; }     // Nom du Service - Eg. LM Studio (Local)
-            public string Uri { get; set; }      // Uri - Eg. "http://server:port"
-            public string Key { get; set; }      // Clé Authentification 
-            public string Context { get; set; }  // Prompt de Contexte (selon le Type de Modèle)
-            public List<AIModel> Models { get; set; } // Modèles AI disponibles avec ce service
+            public string Id { get; set; }              // Id du Service - Eg. LMS
+            public string Name { get; set; }            // Nom du Service - Eg. LM Studio (Local)
+            public string Uri { get; set; }             // Uri - Eg. "http://server:port"
+            public string Key { get; set; }             // Clé Authentification (optionnelle)
+            public string Context { get; set; }         // Prompt de Contexte (selon le Type de Modèle)
+            public List<AIModel> Models { get; set; }   // Modèles AI disponibles avec ce service
         }
 
-        // Liste des Services IA possibles
-        private static List<AIService> aiMailerAIServices = null;
-        private AIService aiMailerAIServiceActif = null; // Ajout pour mémoriser le service actif
-
+        public enum AIActionParametreType
+        {
+            String,
+            DateTime,
+            Email,
+            Style
+        }
+        public class AIActionParametre
+        {
+            public string Name { get; set; }
+            public AIActionParametreType Type { get; set; }
+            public string Value { get; set; }
+        }
         // Description des Actions (Boutons) possibles :
-        // Id de l'action, Libellé du Bouton, Prompt système à envoyer à l'IA, Modèle IA à utiliser
         private class AIAction
         {
-            public string Id { get; set; }          // Id de l'action
-            public string Name { get; set; }       // Libellé du bouton
-            public string Prompt { get; set; }      // Prompt système à envoyer à l'IA
-            public double Temperature { get; set; }    // Temperature
+            public string Id { get; set; }              // Id de l'action
+            public string Name { get; set; }            // Libellé du bouton
+            public string Prompt { get; set; }          // Prompt système à envoyer à l'IA
+            public double Temperature { get; set; }     // Temperature
+            public string ServiceId { get; set; }
+            public string ModelId { get; set; }
+
+          //  public AIService Service { get; set; }  // ==========>>>>>>>>> A enlever 
+            public AIModel Model { get; set; }      // ==========>>>>>>>>> A enlever 
+            public List<AIActionParametre> Parametres { get; set; }
 
         }
-
-        // Liste des Actions (Boutons) possibles
-        private List<AIAction> aiMailerAIActions = new List<AIAction>();
 
         ///// **********************************************************************
         ///// **********************************************************************
@@ -185,7 +206,7 @@ namespace AIMailer
         ///// **********************************************************************
 
         /// **********************************************************************
-        /// ***** Methode d'appel à l'IA et de prise en compte de sa réponse *****
+        /// ***** Méthode d'appel à l'IA et de prise en compte de sa réponse *****
         /// **********************************************************************
         private async Task AIMAilerAIMethod(AIAction action)
         {
@@ -199,6 +220,8 @@ namespace AIMailer
                 return;
             }
 
+            // ====>>>>>> Utiliser le ServiceID et le ModelID de l'action
+
             // Erreur bloquante si aucun service
             if (aiMailerAIServiceActif == null)
             {
@@ -210,7 +233,7 @@ namespace AIMailer
             /// ***** Construction du corps de la requête à envoyer à l'IA ***********
             /// **********************************************************************
             object iaRequestBody = AIMAilerAIModelPrompt(action, texteUtilisateur);
-            if (iaRequestBody == null)
+            if (iaRequestBody == null)  // Abandon si un erreur a été signalée a la construction du prompt
                 return;
             var iaRequestBodyJson = new StringContent(JsonSerializer.Serialize(iaRequestBody), Encoding.UTF8, "application/json");
 
@@ -255,6 +278,21 @@ namespace AIMailer
             // Temperature with model ratio
             double calcTemp = action.Temperature * (aiMailerAIModelActif.TemperatureRatio > 0 ? aiMailerAIModelActif.TemperatureRatio : 1);
             string model = aiMailerAIModelActif.Model;
+            /*
+            if (action.parametres != null && action.parametres.ContainsKey("modele"))
+            {
+                string selectedModel = action.ExtraParams["modele"];
+                // Vérifier si ce modèle est dans le service actif
+                if (aiMailerAIServiceActif?.Models != null && aiMailerAIServiceActif.Models.Any(m => m.Model == selectedModel))
+                {
+                    model = selectedModel;
+                }
+            }
+            if (action.ExtraParams != null && action.ExtraParams.ContainsKey("modele"))
+            {
+                model = action.ExtraParams["modele"];
+            }
+            */
             string serviceAndModel = BuildServiceAndModelLabel();
             string typeString = aiMailerAIModelActif.Type.ToString();
             string actionPrompt = action.Prompt;
@@ -278,14 +316,15 @@ namespace AIMailer
                         temperature = calcTemp
                     };
                     break;
-             
+
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
                     messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
                     returnedObject = new
                     {
                         model = model,
                         messages = new[] { new { role = "system", content = fullActionPrompt }, new { role = "user", content = texteUtilisateur } },
-                        temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax
+                        temperature = calcTemp,
+                        max_tokens = aiMailerAIModelActif.TokensMax
                     };
                     break;
 
@@ -305,7 +344,8 @@ namespace AIMailer
                     {
                         model = model,
                         messages = new[] { new { role = "user", content = fullActionAndUserPrompt } },
-                        temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax
+                        temperature = calcTemp,
+                        max_tokens = aiMailerAIModelActif.TokensMax
                     };
                     break;
 
@@ -313,7 +353,9 @@ namespace AIMailer
                     messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
-                        model = model, messages = new[] { new { role = "user", content = minPrompt } }, temperature = calcTemp
+                        model = model,
+                        messages = new[] { new { role = "user", content = minPrompt } },
+                        temperature = calcTemp
                     };
                     break;
 
@@ -383,7 +425,7 @@ namespace AIMailer
         // lancement de l'application par la fct appelée après création de la fenêtre
         private void AIMailer_Load(object sender, EventArgs e)
         {
-            LoadConfigurationFromFile(); // Lecture de la configuration de l'appli
+            LoadConfigurationFile(); // Lecture de la configuration de l'appli
             InitialiserInterface();      // Adaptation de la fenêtre
             RestaurerTexteAutoSave(); // 💾 AUTOSAVE
         }
@@ -393,7 +435,7 @@ namespace AIMailer
         ///// *** Lecture de la configuration de l'application *********************
         ///// **********************************************************************
         ///// **********************************************************************
-        private void LoadConfigurationFromFile()
+        private void LoadConfigurationFile()
         {
             string configFilePath = Path.Combine(Application.StartupPath, aiMailerConfigFile);
             aiMailerAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
@@ -419,8 +461,13 @@ namespace AIMailer
                 aiMailerAIActions = config.Actions ?? new List<AIAction>();
                 aiMailerAIServices = config.Services ?? new List<AIService>();
 
-                aiMailerAIServiceActif = aiMailerAIServices.FirstOrDefault(); // ✅ Premier service disponible
-                aiMailerAIModelActif = aiMailerAIServiceActif?.Models?.FirstOrDefault(); // ✅ Premier modèle de ce service
+                // Trouve le Modèle par défaut ou sélectionne le premier par défaut
+                aiMailerAIModelActif = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
+                   ?? aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
+
+                // Trouve le Service correspondant au Modèle par défaut ou sélectionne le premier par défaut
+                aiMailerAIServiceActif = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(aiMailerAIModelActif))
+                    ?? aiMailerAIServices?.FirstOrDefault();
             }
             catch (Exception ex)    // Erreur Fichier mal formatté
             {
@@ -431,10 +478,54 @@ namespace AIMailer
         // Structure de Parsing du fichier de configuration
         private class AIMailerConfigurationFile
         {
-            public List<AIService> Services { get; set; }   // AI Services 
-            public List<AIModel> Models { get; set; }       // AI Modèle
             public List<AIAction> Actions { get; set; }     // AI Actions
+            public List<AIService> Services { get; set; }   // AI Services 
+//            public List<AIModel> Models { get; set; }       // AI Modèle
         }
+
+        /// <summary>
+        /// (Ré)écrit le fichier de configuration JSON de l’application
+        /// à partir des listes en mémoire aiMailerAIServices et aiMailerAIActions.
+        /// </summary>
+        private void SaveConfigurationFile( bool messageP = true)
+        {
+            // 1. Prépare l’objet « racine » à sérialiser
+            var config = new AIMailerConfigurationFile
+            {
+                Actions = aiMailerAIActions,
+                Services = aiMailerAIServices   // déjà null-safe
+                // Si vous aviez aussi la propriété Models à la racine,
+                // ajoutez-la ici le cas échéant (par exemple pour un cache global).
+            };
+
+            // 2. Options de sérialisation
+            var options = new JsonSerializerOptions
+            {
+                WriteIndented = true,                                // JSON lisible
+                DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+            };
+            options.Converters.Add(new JsonStringEnumConverter());   // enums → chaînes
+
+            try
+            {
+                // 3. Sérialise en mémoire
+                string json = JsonSerializer.Serialize(config, options);
+
+                // 4. Écrit sur disque (remplace le fichier existant)
+                string cfgPath = Path.Combine(Application.StartupPath, aiMailerConfigFile);
+                File.WriteAllText(cfgPath, json, Encoding.UTF8);
+
+                if (messageP)
+                    MessageBox.Show("Configuration enregistrée.",
+                                "Sauvegarde OK", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                // Gestion d’erreur la plus simple : réutilise votre boîte générique
+                ErrorShow("ERROR_EDITOR_CFGFILEOPEN", ex.Message);
+            }
+        }
+
 
         ///// **********************************************************************
         ///// **********************************************************************
@@ -468,8 +559,10 @@ namespace AIMailer
         {
             // Taille Textbox 
             this.Text = aiMailerName;
-            this.Size = new Size(textWidth + 2 * textXOffset + buttonWidth + 2 * buttonXOffset + textXScrollbar,
-                                    menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar);
+            this.Size = new Size(
+    textWidth + 2 * textXOffset + buttonWidth + 2 * buttonXOffset + 50, // ← espace plus large à droite
+    menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar
+);
 
             // Zone de texte principale
             aiMailerEditor = new TextBox
@@ -496,7 +589,7 @@ namespace AIMailer
             contextMenu.MenuItems.Add(redoMenuItem);
             contextMenu.MenuItems.Add("-");
             MenuItem cutMenuItem = new MenuItem(textEditorCouperMenuLabel);
-            cutMenuItem.Click += (s, e) => 
+            cutMenuItem.Click += (s, e) =>
             {
                 aiMailerUndoStack.Push(aiMailerEditor.Text);
                 aiMailerRedoStack.Clear();
@@ -591,8 +684,12 @@ namespace AIMailer
             // Curseur pour la taille du texte
             TrackBar fontSizeSlider = new TrackBar
             {
-                Minimum = editeurTextFontSizeMin, Maximum = editeurTextFontSizeMax, Value = editeurTextFontSize,
-                TickFrequency = 2, SmallChange = 1, LargeChange = 2,
+                Minimum = editeurTextFontSizeMin,
+                Maximum = editeurTextFontSizeMax,
+                Value = editeurTextFontSize,
+                TickFrequency = 2,
+                SmallChange = 1,
+                LargeChange = 2,
                 Orientation = Orientation.Horizontal,
                 Location = new Point(textXOffset, aiMailerEditor.Bottom + 10),
                 Width = textFontSliderWidth,
@@ -622,49 +719,177 @@ namespace AIMailer
             this.Controls.Add(fontSizeSlider);
             this.Controls.Add(fontSizeLabel);
         }
-
+        ///
         /// **********************************************************************
         /// *** Initialisation du Panneau avec les Boutons d'Actions *************
         /// **********************************************************************
         private void InitialiserInterfaceActionButtons(int menuStripYOffset)
         {
-            // Création Panneau latéral pour les boutons d'actions
+            // Création du panneau latéral pour les boutons d'actions
             Panel actionPanel = new Panel
             {
                 Name = aiMailerActionPanelName,
-                Size = new Size(buttonWidth + 2 * buttonXOffset,
+                Size = new Size(buttonWidth + 2 * buttonXOffset + buttonConfigXOffset + buttonConfigWidth, // Ajout espace pour bouton config
                                 aiMailerAIActions.Count * (buttonHeight + buttonYSpace) + 2 * buttonYOffset - buttonYSpace),
-                Location = new Point(textWidth + 2 * textXOffset, menuStripYOffset + textYOffset),
+                Location = new Point(aiMailerEditor.Right + 10, menuStripYOffset + textYOffset),
                 BorderStyle = buttonPanelBorderStyle,
                 BackColor = buttonPanelBackColor,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right
             };
             this.Controls.Add(actionPanel);
 
-            // Création des Boutons d'actions
+            // Création des boutons d'action et boutons config ⚙
             for (int i = 0, x = buttonXOffset, y = buttonYOffset; i < aiMailerAIActions.Count; y += buttonHeight + buttonYSpace, i++)
             {
                 var action = aiMailerAIActions[i];
-                Font fonte = new Font(this.Font.FontFamily, buttonTextFontSize);
+                Font fonteAction = new Font(this.Font.FontFamily, buttonTextFontSize);
+                Font fonteConfig = new Font(this.Font.FontFamily, buttonTextFontSize - 1);
 
-                // Création du bouton d'action
-                Button btn = new Button
+                // Bouton IA
+                Button btnAction = new Button
                 {
                     Text = action.Name,
-                    // Ajout des caractéristiques de l'Action au bouton 
-                    Tag = new AIAction { Id = action.Id, Name = action.Name, Prompt = action.Prompt, Temperature = action.Temperature},
-
-                    Font = fonte,
+                    Tag = action, // On lie directement l'action
+                    Font = fonteAction,
                     Location = new Point(x, y),
                     BackColor = buttonBackColor,
                     ForeColor = buttonForeColor,
-                    Size = new Size(buttonWidth, buttonHeight),
+                    Size = new Size(buttonWidth, buttonHeight)
+                };
+                btnAction.Click += async (s, e) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
+                actionPanel.Controls.Add(btnAction);
+
+                // Bouton Config ⚙
+                Button btnConfig = new Button
+                {
+                    Text = btnConfigLabel,
+                    Tag = action,
+                    Font = fonteConfig,
+                    Location = new Point(x + buttonWidth + buttonConfigXOffset, y),
+                    Size = new Size(buttonConfigWidth, buttonHeight),
+                    // BackColor = Color.LightGray,
+                    // ForeColor = Color.Black
+                    BackColor = MyColorSnow, // buttonBackColor,
+                    ForeColor = buttonForeColor
                 };
 
-                btn.Click += async (s, e) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
-                actionPanel.Controls.Add(btn);
+                btnConfig.Click += (s, e) =>
+                {
+                    Button sourceBtn = (Button)s;
+                    Point screenPosition = sourceBtn.PointToScreen(Point.Empty);
+                    AfficherPanneauConfig(action);
+                };
+                actionPanel.Controls.Add(btnConfig);
             }
         }
+
+        /// **********************************************************************
+        /// *** Initialisation menu des Boutons d'Actions *************
+        /// ************************
+        /// **********************************************
+        /// 
+        /// 
+        /*
+        private void AfficherPanneauConfig(AIAction action)
+        {
+            // Création du panneau en plein écran
+            Panel panneau = new Panel
+            {
+                Dock = DockStyle.Fill,
+                BackColor = Color.White,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            this.Controls.Add(panneau);
+            panneau.BringToFront();
+
+            // Label - Prompt
+            Label lblPrompt = new Label { Text = "Prompt :", Location = new Point(30, 30), AutoSize = true };
+            TextBox txtPrompt = new TextBox
+            {
+                Location = new Point(120, 25),
+                Width = 500,
+                Text = action.Prompt
+            };
+
+            // Température
+            Label lblTemp = new Label { Text = "Température :", Location = new Point(30, 70), AutoSize = true };
+            NumericUpDown nudTemp = new NumericUpDown
+            {
+                Location = new Point(120, 65),
+                DecimalPlaces = 2,
+                Increment = 0.1M,
+                Minimum = 0,
+                Maximum = 2,
+                Value = (decimal)action.Temperature
+            };
+
+            // Modèle (liste déroulante)
+            Label lblModele = new Label { Text = "Modèle :", Location = new Point(30, 110), AutoSize = true };
+            ComboBox comboModele = new ComboBox
+            {
+                Location = new Point(120, 105),
+                Width = 300,
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            // Remplir avec les modèles de tous les services
+            if (aiMailerAIServices != null)
+            {
+                foreach (var service in aiMailerAIServices)
+                {
+                    if (service.Models != null)
+                    {
+                        foreach (var model in service.Models)
+                        {
+                            if (!comboModele.Items.Contains(model.Model))
+                                comboModele.Items.Add(model.Model);
+                        }
+                    }
+                }
+            }
+
+            if (action.ExtraParams != null && action.ExtraParams.TryGetValue("modele", out string modele))
+                comboModele.SelectedItem = modele;
+            else if (comboModele.Items.Count > 0)
+                comboModele.SelectedIndex = 0;
+
+
+            // Bouton de validation
+            Button btnOK = new Button
+            {
+                Text = "OK",
+                Location = new Point(150, 160),
+                Width = 100
+            };
+            btnOK.Click += (s, e) =>
+            {
+                action.Prompt = txtPrompt.Text;
+                action.Temperature = (double)nudTemp.Value;
+                action.ExtraParams["modele"] = comboModele.SelectedItem?.ToString() ?? "";
+                this.Controls.Remove(panneau); // Supprimer le panneau une fois terminé
+            };
+
+            // Bouton Annuler
+            Button btnAnnuler = new Button
+            {
+                Text = "Annuler",
+                Location = new Point(270, 160),
+                Width = 100
+            };
+            btnAnnuler.Click += (s, e) => this.Controls.Remove(panneau);
+
+            // Ajout des éléments au panneau
+            panneau.Controls.Add(lblPrompt);
+            panneau.Controls.Add(txtPrompt);
+            panneau.Controls.Add(lblTemp);
+            panneau.Controls.Add(nudTemp);
+            panneau.Controls.Add(lblModele);
+            panneau.Controls.Add(comboModele);
+            panneau.Controls.Add(btnOK);
+            panneau.Controls.Add(btnAnnuler);
+        }
+        */
+
 
 
         /// **********************************************************************
@@ -713,13 +938,13 @@ namespace AIMailer
             /// ***** Création du Label de Menu Service et Modèle ***********
             /// *************************************************************
             ToolStripLabel labelServiceModel = new ToolStripLabel
-                        {
-                            Text = BuildServiceAndModelLabel(),
-                            Font = new Font(this.Font.FontFamily, editeurMenuFontSize - 1),
-                            ForeColor = editeurMenuForeColor,
-                            Alignment = ToolStripItemAlignment.Right,
-                            Margin = new Padding(0, 0, textXOffset, 0)
-                        };
+            {
+                Text = BuildServiceAndModelLabel(),
+                Font = new Font(this.Font.FontFamily, editeurMenuFontSize - 1),
+                ForeColor = editeurMenuForeColor,
+                Alignment = ToolStripItemAlignment.Right,
+                Margin = new Padding(0, 0, textXOffset, 0)
+            };
             menuStrip.Items.Add(labelServiceModel);
 
             // Ajout de l'ensemble du Menu à la fenêtre
@@ -777,7 +1002,7 @@ namespace AIMailer
             return string.Format(stringMaskServiceAndModel,
                 (aiMailerAIServiceActif == null ? aiMailerServiceAbsent : aiMailerAIServiceActif.Name),
                 (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Name),
-                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Type.ToString()) );
+                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Type.ToString()));
         }
 
         /// ********************************************************
@@ -837,11 +1062,12 @@ namespace AIMailer
                 {
                     File.WriteAllText(Path.Combine(Application.StartupPath, aiMailerAutoSaveFile), aiMailerEditor.Text);
                 }
-                catch {
+                catch
+                {
                     // Si impossible demande de confirmation à l'utilisateur
                     DialogResult result = MessageBox.Show(aiMailerRestartAutoSaveWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                     if (result != DialogResult.No)
-                            return; // Annuler le redémarrage si refus de l'utilisateur
+                        return; // Annuler le redémarrage si refus de l'utilisateur
                 }
             }
             // Relancer l'application 
@@ -871,10 +1097,10 @@ namespace AIMailer
             string msgLabel;
 
             if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
-                msgLabel = string.Format(maskErrorMsgUnknown,msgKey);
+                msgLabel = string.Format(maskErrorMsgUnknown, msgKey);
             MessageBox.Show(msgLabel
                    + (errorLevel1 == "" ? "" : "\n\n[Level1] " +
-                            (errorLevel1.Length < aiMailerErrorStringLenghtMax ? errorLevel1 : 
+                            (errorLevel1.Length < aiMailerErrorStringLenghtMax ? errorLevel1 :
                                 errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
                    + (errorLevel2 == "" ? "" : "\n\n[Level2] " +
                             (errorLevel2.Length < aiMailerErrorStringLenghtMax ? errorLevel2 :
@@ -930,6 +1156,214 @@ namespace AIMailer
                 t.SetApartmentState(ApartmentState.STA); // indispensable pour WinForms
                 t.IsBackground = true;
                 t.Start();
+            }
+        }
+        /// <summary>
+        /// Ouvre une fenêtre modale permettant d’éditer les propriétés d’une action IA
+        /// (ordre : Name, Service, Modèle, Prompt, Température, Paramètres).
+        /// </summary>
+        private void AfficherPanneauConfig(AIAction action)
+        {
+            // ---------- Fenêtre modale ----------
+            using (Form dlg = new Form())
+            {
+                dlg.Text = $"Configuration : {action.Name}";
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.MaximizeBox = false;
+                dlg.MinimizeBox = false;
+                dlg.ShowInTaskbar = false;
+                dlg.AutoSize = true;
+                dlg.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                dlg.Font = this.Font;
+
+                int ctrlW = 500;
+                int y = 15;
+
+                // Helper créant un label + retourne sa hauteur
+                int AddLabel(string text)
+                {
+                    var lbl = new Label { Text = text, AutoSize = true, Left = 15, Top = y + 4 };
+                    dlg.Controls.Add(lbl);
+                    return lbl.Height;
+                }
+
+                // Name ----------------------------------------------------------
+                AddLabel("Name :");
+                TextBox txtName = new TextBox
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = ctrlW,
+                    Text = action.Name
+                };
+                dlg.Controls.Add(txtName);
+                y += txtName.Height + 15;
+
+                // Service -------------------------------------------------------
+                AddLabel("Service :");
+                ComboBox cmbService = new ComboBox
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = ctrlW,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                dlg.Controls.Add(cmbService);
+
+                // Modèle --------------------------------------------------------
+                y += cmbService.Height + 10;
+                AddLabel("Modèle :");
+                ComboBox cmbModel = new ComboBox
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = ctrlW,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                dlg.Controls.Add(cmbModel);
+                y += cmbModel.Height + 15;
+
+                // Prompt --------------------------------------------------------
+                AddLabel("Prompt :");
+                TextBox txtPrompt = new TextBox
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = ctrlW,
+                    Text = action.Prompt,
+                    Multiline = true,
+                    Height = 60,
+                    ScrollBars = ScrollBars.Vertical
+                };
+                dlg.Controls.Add(txtPrompt);
+                y += txtPrompt.Height + 15;
+
+                // Température ---------------------------------------------------
+                AddLabel("Température :");
+                NumericUpDown nudTemp = new NumericUpDown
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = 80,
+                    DecimalPlaces = 2,
+                    Increment = 0.05M,
+                    Minimum = 0,
+                    Maximum = 2,
+                    Value = (decimal)action.Temperature
+                };
+                dlg.Controls.Add(nudTemp);
+                y += nudTemp.Height + 20;
+
+                // Paramètres (DataGridView) -------------------------------------
+                AddLabel("Paramètres :");
+                DataGridView dgvParams = new DataGridView
+                {
+                    Left = 15,
+                    Top = y,
+                    Width = ctrlW + 125,
+                    Height = 150,
+                    AllowUserToAddRows = true,
+                    AllowUserToDeleteRows = true,
+                    RowHeadersVisible = false,
+                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
+                };
+                // Colonne Name
+                var colName = new DataGridViewTextBoxColumn { HeaderText = "Name" };
+                // Colonne Type
+                var colType = new DataGridViewComboBoxColumn
+                {
+                    HeaderText = "Type",
+                    DataSource = Enum.GetValues(typeof(AIActionParametreType))
+                };
+                // Colonne Value
+                var colValue = new DataGridViewTextBoxColumn { HeaderText = "Value" };
+                dgvParams.Columns.AddRange(colName, colType, colValue);
+
+                // Remplit avec la liste existante
+                if (action.Parametres != null)
+                {
+                    foreach (var p in action.Parametres)
+                        dgvParams.Rows.Add(p.Name, p.Type, p.Value);
+                }
+                dlg.Controls.Add(dgvParams);
+                y += dgvParams.Height + 20;
+
+                // ---------- Boutons OK / Annuler ----------
+                Button btnOK = new Button
+                {
+                    Text = "OK",
+                    DialogResult = DialogResult.OK,
+                    Left = dlg.ClientSize.Width - 200,
+                    Width = 80,
+                    Top = y
+                };
+                Button btnCancel = new Button
+                {
+                    Text = "Annuler",
+                    DialogResult = DialogResult.Cancel,
+                    Left = btnOK.Right + 10,
+                    Width = 80,
+                    Top = y
+                };
+                dlg.Controls.Add(btnOK);
+                dlg.Controls.Add(btnCancel);
+                dlg.AcceptButton = btnOK;
+                dlg.CancelButton = btnCancel;
+
+                // ---------- Logique Service / Modèle ----------
+                // Remplit la liste des services
+                cmbService.Items.AddRange(aiMailerAIServices.ToArray());
+                cmbService.DisplayMember = "Name";
+                // Sélectionne le service actuel
+                cmbService.SelectedItem = action.Service ?? aiMailerAIServiceActif;
+
+                // Méthode interne : alimente la liste de modèles selon service
+                void RefreshModels()
+                {
+                    cmbModel.Items.Clear();
+                    var svc = cmbService.SelectedItem as AIService;
+                    if (svc?.Models != null)
+                    {
+                        cmbModel.Items.AddRange(svc.Models.ToArray());
+                        cmbModel.DisplayMember = "Name";
+                        // tente de sélectionner l’ancien modèle, sinon 1er
+                        cmbModel.SelectedItem =
+                            svc.Models.FirstOrDefault(m => m == action.Model) ??
+                            svc.Models.FirstOrDefault();
+                    }
+                }
+
+                cmbService.SelectedIndexChanged += (_, __) => RefreshModels();
+                RefreshModels();
+
+                // ---------- Affichage ----------
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Met à jour l’action depuis les contrôles
+                    action.Name = txtName.Text;
+                    action.Service = cmbService.SelectedItem as AIService;
+                    action.Model = cmbModel.SelectedItem as AIModel;
+                    action.Prompt = txtPrompt.Text;
+                    action.Temperature = (double)nudTemp.Value;
+
+                    // Paramètres
+                    var newParams = new List<AIActionParametre>();
+                    foreach (DataGridViewRow row in dgvParams.Rows)
+                    {
+                        if (row.IsNewRow) continue;
+                        var name = row.Cells[0].Value?.ToString() ?? "";
+                        var type = row.Cells[1].Value is AIActionParametreType t ? t : AIActionParametreType.String;
+                        var value = row.Cells[2].Value?.ToString() ?? "";
+                        // ignore les lignes vides
+                        if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(value))
+                            continue;
+                        newParams.Add(new AIActionParametre { Name = name, Type = type, Value = value });
+                    }
+                    action.Parametres = newParams;
+                    // Enregistre fichier configuration
+                    SaveConfigurationFile(false);
+                }
             }
         }
 
