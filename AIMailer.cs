@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Configuration;
 using System.Drawing;
 using System.IO;
 using System.Linq;
@@ -63,7 +64,8 @@ namespace AIMailer
         private const string aiMailerErrorStringEmpty = "<vide>";
         private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
-        private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI        
+        private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI
+        private  int aiMailerTemperaturePrecision = 2; //Arondi Temperature
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
@@ -77,7 +79,7 @@ namespace AIMailer
         // Tailles
         private const int textFontSliderWidth = 200, textFontSliderHeight = 40;   // Taille du curseur de police
         private const int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
-        private const int textWidth = 600, textHeight = 400;
+        private const int textWidth = 800, textHeight = 400;
         private const int buttonXOffset = 1, buttonYOffset = 10, buttonYSpace = 10;
         private const int buttonWidth = 110, buttonHeight = 30;
         private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
@@ -123,8 +125,18 @@ namespace AIMailer
         // *****************************************************
         private static List<AIService> aiMailerAIServices = null;               // Liste des Services IA configurés
         private static List<AIAction> aiMailerAIActions = new List<AIAction>(); // Liste des Modèles IA configurés
-        private static AIService aiMailerAIServiceActif = null;                 // Ajout pour mémoriser le service actif
-        private static AIModel aiMailerAIModelActif = null;                     // Ajout pour mémoriser le modèle actif
+        private static AIService svc = null;                 // Ajout pour mémoriser le service actif
+        private static AIModel mdl = null;                     // Ajout pour mémoriser le modèle actif
+
+        // ------------------------------------------------------------------
+        // Permet de retrouver rapidement le service ou le modèle à partir
+        // des seuls ServiceId et ModelId de l'action.
+        // ------------------------------------------------------------------
+        private AIService GetServiceFor(AIAction action)
+            => aiMailerAIServices.First(s => s.Id == action.ServiceId);
+
+        private AIModel GetModelFor(AIAction action)
+            => GetServiceFor(action).Models.First(m => m.Id == action.ModelId);
 
 
         ///// **********************************************************************
@@ -192,10 +204,7 @@ namespace AIMailer
             public double Temperature { get; set; }     // Temperature
             public string ServiceId { get; set; }
             public string ModelId { get; set; }
-
-          //  public AIService Service { get; set; }  // ==========>>>>>>>>> A enlever 
-            public AIModel Model { get; set; }      // ==========>>>>>>>>> A enlever 
-            public List<AIActionParametre> Parametres { get; set; }
+            //public List<AIActionParametre> Parametres { get; set; }
 
         }
 
@@ -208,60 +217,75 @@ namespace AIMailer
         /// **********************************************************************
         /// ***** Méthode d'appel à l'IA et de prise en compte de sa réponse *****
         /// **********************************************************************
+        /// 
+        /// 
+       
+        /// Entrée pour la combo Service/Modèle fusionnée.
+        private class ServiceModelEntry
+        {
+            public AIService Service { get; set; }
+            public AIModel Model { get; set; }
+            public string Text { get; set; }
+        }
+
         private async Task AIMAilerAIMethod(AIAction action)
         {
-            // Extraction du texte à traiter : texte sélectionné à la souris ou contenu de la Text box
-            string texteUtilisateur = string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText) ? aiMailerEditor.Text : aiMailerEditor.SelectedText;
+            // 1) Lookup dynamique ou valeurs globales si override "Default"
+            var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? svc : GetServiceFor(action);
+            var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? mdl : GetModelFor(action);
 
-            // Erreur bloquante si aucun texte à traiter
+            // 2) Vérifications
+            if (svcLocal == null || mdlLocal == null)
+            {
+                ErrorShow("ERROR_EDITOR_IASERVICEUNKNOW", action.Name);
+                return;
+            }
+            string texteUtilisateur = string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText)
+                ? aiMailerEditor.Text
+                : aiMailerEditor.SelectedText;
             if (string.IsNullOrWhiteSpace(texteUtilisateur))
             {
                 ErrorShow("ERROR_EDITOR_EMPTYSELECTION", action.Name);
                 return;
             }
 
-            // ====>>>>>> Utiliser le ServiceID et le ModelID de l'action
+            // 3) Construction du corps JSON (on passe svc et mdl)
+            object iaRequestBody = AIMAilerAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
+            if (iaRequestBody == null) return;
+            var iaRequestBodyJson = new StringContent(
+                JsonSerializer.Serialize(iaRequestBody),
+                Encoding.UTF8,
+                "application/json");
 
-            // Erreur bloquante si aucun service
-            if (aiMailerAIServiceActif == null)
-            {
-                ErrorShow("ERROR_EDITOR_IASERVICEUNKNOW", action.Name, texteUtilisateur);
-                return;
-            }
-
-            /// **********************************************************************
-            /// ***** Construction du corps de la requête à envoyer à l'IA ***********
-            /// **********************************************************************
-            object iaRequestBody = AIMAilerAIModelPrompt(action, texteUtilisateur);
-            if (iaRequestBody == null)  // Abandon si un erreur a été signalée a la construction du prompt
-                return;
-            var iaRequestBodyJson = new StringContent(JsonSerializer.Serialize(iaRequestBody), Encoding.UTF8, "application/json");
-
-            /// **********************************************************************
-            /// ***** Appel synchrone à l'IA avec vérification du code de retour *****
-            /// **********************************************************************
+            // 4) Appel HTTP
             using (var client = new HttpClient())
             {
                 try
                 {
-                    // Spécification de l'URi à appeler avec rajout de la clé si nécessaire
-                    client.BaseAddress = new Uri(aiMailerAIServiceActif.Uri);
-                    if (aiMailerAIServiceActif.Key != "")
-                        client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", aiMailerAIServiceActif.Key);
+                    client.BaseAddress = new Uri(svcLocal.Uri);
+                        if (!string.IsNullOrEmpty(svcLocal.Key))
+                        client.DefaultRequestHeaders.Authorization =
+                            new AuthenticationHeaderValue("Bearer", svcLocal.Key);
 
-                    // Appel synchrone à l'IA
-                    var response = await client.PostAsync(aiMailerAIModelActif.Url, iaRequestBodyJson);
-
-                    // Vérification du code retour http
+                    var response = await client.PostAsync(mdlLocal.Url, iaRequestBodyJson);
                     response.EnsureSuccessStatusCode();
 
-                    // Parsing de la réponse selon le type de Modèle (Chat vs Completion) avec remplacement des \n par NewLine
                     var responseJson = await response.Content.ReadAsStringAsync();
-                    using (JsonDocument doc = JsonDocument.Parse(responseJson))
-                        if (aiMailerAIModelActif.Type.ToString().Substring(0, 4) == AIModelType.Chat.ToString())
-                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("message").GetProperty("content").GetString()?.Replace("\n", Environment.NewLine));
-                        else
-                            AIMAilerAIReplyReplace(doc.RootElement.GetProperty("choices")[0].GetProperty("text").GetString()?.Replace("\n", Environment.NewLine));
+                    using (var doc = JsonDocument.Parse(responseJson))
+                    {
+                        string result = mdlLocal.Type.ToString().StartsWith("Chat")
+                             ? doc.RootElement
+                                 .GetProperty("choices")[0]
+                                 .GetProperty("message")
+                                 .GetProperty("content")
+                                 .GetString()
+                            : doc.RootElement
+                                 .GetProperty("choices")[0]
+                                 .GetProperty("text")
+                                 .GetString();
+
+                        AIMAilerAIReplyReplace(result?.Replace("\n", Environment.NewLine));
+                    }
                 }
                 catch (Exception ex)
                 {
@@ -273,17 +297,17 @@ namespace AIMailer
         /// *************************************************************************
         /// ***** Construction du Prompt à envoyer à l'IA selon le Modèle actif *****
         /// *************************************************************************
-        private object AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur)
+        private object AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur, AIService svc , AIModel mdl)
         {
             // Temperature with model ratio
-            double calcTemp = action.Temperature * (aiMailerAIModelActif.TemperatureRatio > 0 ? aiMailerAIModelActif.TemperatureRatio : 1);
-            string model = aiMailerAIModelActif.Model;
+            double calcTemp = action.Temperature * (mdl.TemperatureRatio > 0 ? mdl.TemperatureRatio : 1);
+            string model = mdl.Model;
             /*
             if (action.parametres != null && action.parametres.ContainsKey("modele"))
             {
                 string selectedModel = action.ExtraParams["modele"];
                 // Vérifier si ce modèle est dans le service actif
-                if (aiMailerAIServiceActif?.Models != null && aiMailerAIServiceActif.Models.Any(m => m.Model == selectedModel))
+                if (svc?.Models != null && svc.Models.Any(m => m.Model == selectedModel))
                 {
                     model = selectedModel;
                 }
@@ -293,11 +317,11 @@ namespace AIMailer
                 model = action.ExtraParams["modele"];
             }
             */
-            string serviceAndModel = BuildServiceAndModelLabel();
-            string typeString = aiMailerAIModelActif.Type.ToString();
+            string serviceAndModel = $"{svc.Name} | {mdl.Name} | {mdl.Type}";
+            string typeString = mdl.Type.ToString();
             string actionPrompt = action.Prompt;
             string minPrompt = actionPrompt + " " + texteUtilisateur;
-            string fullActionPrompt = aiMailerAIServiceActif.Context + " " + actionPrompt;
+            string fullActionPrompt = svc.Context + " " + actionPrompt;
             string fullActionAndUserPrompt = fullActionPrompt + " " + texteUtilisateur;
             string notApplString = "N/A";
             int notApplTokens = 0;
@@ -305,7 +329,7 @@ namespace AIMailer
             object returnedObject = null;
 
             // Build Prompt depending on Actif Model
-            switch (aiMailerAIModelActif.Type)
+            switch (mdl.Type)
             {
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
                     messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
@@ -318,13 +342,13 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, aiMailerAIModelActif.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = model,
                         messages = new[] { new { role = "system", content = fullActionPrompt }, new { role = "user", content = texteUtilisateur } },
                         temperature = calcTemp,
-                        max_tokens = aiMailerAIModelActif.TokensMax
+                        max_tokens = mdl.TokensMax
                     };
                     break;
 
@@ -339,13 +363,13 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = model,
                         messages = new[] { new { role = "user", content = fullActionAndUserPrompt } },
                         temperature = calcTemp,
-                        max_tokens = aiMailerAIModelActif.TokensMax
+                        max_tokens = mdl.TokensMax
                     };
                     break;
 
@@ -365,8 +389,8 @@ namespace AIMailer
                     break;
 
                 case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, aiMailerAIModelActif.TokensMax);
-                    returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = aiMailerAIModelActif.TokensMax };
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, mdl.TokensMax);
+                    returnedObject = new { model = model, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = mdl.TokensMax };
                     break;
 
                 case AIModelType.CompletionMin:       // Modèle Completion: Prompt (no Prompt Context) 
@@ -375,7 +399,7 @@ namespace AIMailer
                     break;
 
                 default:                    // Unknown Active Model error
-                    ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", aiMailerAIServiceActif.Context, actionPrompt, texteUtilisateur, aiMailerAIModelActif.TokensMax.ToString());
+                    ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", svc.Context, actionPrompt, texteUtilisateur, mdl.TokensMax.ToString());
                     break;
             }
 
@@ -462,11 +486,11 @@ namespace AIMailer
                 aiMailerAIServices = config.Services ?? new List<AIService>();
 
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
-                aiMailerAIModelActif = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
+                mdl = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
                    ?? aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
 
                 // Trouve le Service correspondant au Modèle par défaut ou sélectionne le premier par défaut
-                aiMailerAIServiceActif = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(aiMailerAIModelActif))
+                svc = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(mdl))
                     ?? aiMailerAIServices?.FirstOrDefault();
             }
             catch (Exception ex)    // Erreur Fichier mal formatté
@@ -534,6 +558,8 @@ namespace AIMailer
         ///// **********************************************************************
         private void InitialiserInterface()
         {
+            bool aiBoutonsP = true; // Pas de bouton IA
+
             // Charte graphique / ergonomie
             this.BackColor = editeurBackColor;
             this.Font = new Font(editeurTextFontFamily, editeurTextFontSize);
@@ -543,25 +569,27 @@ namespace AIMailer
             int menuStripYOffset = InitialiserInterfaceMenu();
 
             // Ajout de la Texte Box Editeur
-            InitialiserInterfaceEditeur(menuStripYOffset);
+            InitialiserInterfaceEditeur(menuStripYOffset, aiBoutonsP); // Pas de bouton IA
 
             // Ajout du Curseur de Sélection de la taille de la police
             InitialiserInterfaceEditeurCurseurFonte();
 
             // Ajout des Boutons d'Actions
-            InitialiserInterfaceActionButtons(menuStripYOffset);
+            if (aiBoutonsP)
+                InitialiserInterfaceActionButtons(menuStripYOffset);
         }
 
         /// **********************************************************************
         /// *** Initialisation Text Box Editeur **********************************
         /// **********************************************************************
-        private void InitialiserInterfaceEditeur(int menuStripYOffset)
+        private void InitialiserInterfaceEditeur(int menuStripYOffset, bool aiBoutonsP)
         {
             // Taille Textbox 
             this.Text = aiMailerName;
             this.Size = new Size(
-    textWidth + 2 * textXOffset + buttonWidth + 2 * buttonXOffset + 50, // ← espace plus large à droite
-    menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar
+                        textWidth + 2 * textXOffset 
+                        + (aiBoutonsP ? buttonWidth + 2 * buttonXOffset +30 : 0) + 20, // ← espace plus large à droite
+                        menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar
 );
 
             // Zone de texte principale
@@ -954,41 +982,34 @@ namespace AIMailer
             /// ********************************************************
             /// ***** Création du menu "Services et Modèles" ***********
             /// ********************************************************
+            // ——— Menu "Modèles" unifié ———
             ToolStripMenuItem menuService = new ToolStripMenuItem(textFileMenuModeleLabel);
-
-            // Si la liste n'est pas vide
-            if (aiMailerAIServices != null && aiMailerAIServices.Count > 0)
+            if (aiMailerAIServices != null)
             {
-                // Pour chaque Service
                 foreach (var service in aiMailerAIServices)
                 {
-                    // Créer une entrée de menu Service
-                    ToolStripMenuItem serviceItem = new ToolStripMenuItem(service.Name);
-                    if (service.Models != null)
+                    if (service.Models == null) continue;
+                    foreach (var model in service.Models)
                     {
-                        // Pour chaque Modèle
-                        foreach (var model in service.Models)
+                        var item = new ToolStripMenuItem($"{model.Name} ({service.Name})");
+                        item.Tag = new List<object> { service, model };
+                        item.Click += (s, e) =>
                         {
-                            // Créer une sous-entrée de menu Modèle
-                            ToolStripMenuItem modelItem = new ToolStripMenuItem(model.Name);
-                            modelItem.Tag = new List<object> { service, model };
-                            // Raffraichit la Zone Modèle et Service à la sélection
-                            modelItem.Click += (s, e) =>
-                            {
-                                var tagData = (List<object>)((ToolStripMenuItem)s).Tag;
-                                aiMailerAIServiceActif = (AIService)tagData[0];
-                                aiMailerAIModelActif = (AIModel)tagData[1];
-                                labelServiceModel.Text = BuildServiceAndModelLabel();
-                            };
-                            serviceItem.DropDownItems.Add(modelItem);
-                        }
+                            var tagData = (List<object>)((ToolStripMenuItem)s).Tag;
+                            // Remplace ces deux lignes :
+                            // aiMailerAIServiceActif = (AIService)tagData[0];
+                            // aiMailerAIModelActif   = (AIModel)  tagData[1];
+                            // Par celles-ci :
+                            svc = (AIService)tagData[0];
+                            mdl = (AIModel)tagData[1];
+                            labelServiceModel.Text = BuildServiceAndModelLabel();
+                        };
+                        menuService.DropDownItems.Add(item);
                     }
-                    // Ajouter l'entrée Service
-                    menuService.DropDownItems.Add(serviceItem);
                 }
             }
-            // Ajouter le Menu Service
             menuStrip.Items.Add(menuService);
+
 
             // Retourne la taille de la ligne de menu
             return (menuStrip.Height);
@@ -1000,9 +1021,9 @@ namespace AIMailer
         private string BuildServiceAndModelLabel()
         {
             return string.Format(stringMaskServiceAndModel,
-                (aiMailerAIServiceActif == null ? aiMailerServiceAbsent : aiMailerAIServiceActif.Name),
-                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Name),
-                (aiMailerAIModelActif == null ? aiMailerModeleAbsent : aiMailerAIModelActif.Type.ToString()));
+                (svc == null ? aiMailerServiceAbsent : svc.Name),
+                (mdl == null ? aiMailerModeleAbsent : mdl.Name),
+                (mdl == null ? aiMailerModeleAbsent : mdl.Type.ToString()));
         }
 
         /// ********************************************************
@@ -1167,6 +1188,8 @@ namespace AIMailer
             // ---------- Fenêtre modale ----------
             using (Form dlg = new Form())
             {
+                var globalService = svc;
+                var globalModel = mdl;
                 dlg.Text = $"Configuration : {action.Name}";
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.StartPosition = FormStartPosition.CenterParent;
@@ -1200,7 +1223,8 @@ namespace AIMailer
                 dlg.Controls.Add(txtName);
                 y += txtName.Height + 15;
 
-                // Service -------------------------------------------------------
+                /* Service et modele séparer 999
+                 * // Service -------------------------------------------------------
                 AddLabel("Service :");
                 ComboBox cmbService = new ComboBox
                 {
@@ -1222,7 +1246,61 @@ namespace AIMailer
                     DropDownStyle = ComboBoxStyle.DropDownList
                 };
                 dlg.Controls.Add(cmbModel);
-                y += cmbModel.Height + 15;
+                y += cmbModel.Height + 15;*/
+
+                // Service / Modèle fusionné -------------------------
+                AddLabel("Service / Modèle :");
+                ComboBox cmbServiceModel = new ComboBox
+                {
+                    Left = 140,
+                    Top = y,
+                    Width = ctrlW,
+                    DropDownStyle = ComboBoxStyle.DropDownList
+                };
+                dlg.Controls.Add(cmbServiceModel);
+                y += cmbServiceModel.Height + 15;
+
+                // ——— Prépare les items Service/Modèle ———
+                var entries = new List<ServiceModelEntry>();
+
+                // 1) “Default” → utilise le service/modèle global sélectionné en haut
+                entries.Add(new ServiceModelEntry
+                {
+                    Service = svc,      // ton champ global
+                    Model = mdl,      // ton champ global
+                    Text = "Default"
+                });
+
+                // 2) Tous les autres couples (Model (Service))
+                foreach (var s in aiMailerAIServices.Where(sv => sv.Models != null))
+                    foreach (var m in s.Models)
+                        entries.Add(new ServiceModelEntry
+                        {
+                            Service = s,
+                            Model = m,
+                            Text = $"{m.Name} ({s.Name})"
+                        });
+
+                // 3) Lie la combo à cette liste
+                cmbServiceModel.DataSource = entries;
+                cmbServiceModel.DisplayMember = "Text";
+
+                // 4) Prérenselectionne la ligne correspondant à l’action
+                int idx;
+                if (string.IsNullOrEmpty(action.ServiceId) && string.IsNullOrEmpty(action.ModelId))
+                {
+                    idx = 0; // “Default”
+                }
+                else
+                {
+                    idx = entries.FindIndex(e =>
+                        e.Service.Id == action.ServiceId &&
+                        e.Model.Id == action.ModelId);
+                    if (idx < 0) idx = 0;
+                }
+                cmbServiceModel.SelectedIndex = idx;
+
+
 
                 // Prompt --------------------------------------------------------
                 AddLabel("Prompt :");
@@ -1254,40 +1332,8 @@ namespace AIMailer
                 };
                 dlg.Controls.Add(nudTemp);
                 y += nudTemp.Height + 20;
-
-                // Paramètres (DataGridView) -------------------------------------
-                AddLabel("Paramètres :");
-                DataGridView dgvParams = new DataGridView
-                {
-                    Left = 15,
-                    Top = y,
-                    Width = ctrlW + 125,
-                    Height = 150,
-                    AllowUserToAddRows = true,
-                    AllowUserToDeleteRows = true,
-                    RowHeadersVisible = false,
-                    AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill
-                };
-                // Colonne Name
-                var colName = new DataGridViewTextBoxColumn { HeaderText = "Name" };
-                // Colonne Type
-                var colType = new DataGridViewComboBoxColumn
-                {
-                    HeaderText = "Type",
-                    DataSource = Enum.GetValues(typeof(AIActionParametreType))
-                };
-                // Colonne Value
-                var colValue = new DataGridViewTextBoxColumn { HeaderText = "Value" };
-                dgvParams.Columns.AddRange(colName, colType, colValue);
-
-                // Remplit avec la liste existante
-                if (action.Parametres != null)
-                {
-                    foreach (var p in action.Parametres)
-                        dgvParams.Rows.Add(p.Name, p.Type, p.Value);
-                }
-                dlg.Controls.Add(dgvParams);
-                y += dgvParams.Height + 20;
+                
+                
 
                 // ---------- Boutons OK / Annuler ----------
                 Button btnOK = new Button
@@ -1311,13 +1357,22 @@ namespace AIMailer
                 dlg.AcceptButton = btnOK;
                 dlg.CancelButton = btnCancel;
 
+                /*
                 // ---------- Logique Service / Modèle ----------
                 // Remplit la liste des services
                 cmbService.Items.AddRange(aiMailerAIServices.ToArray());
                 cmbService.DisplayMember = "Name";
                 // Sélectionne le service actuel
-                cmbService.SelectedItem = action.Service ?? aiMailerAIServiceActif;
 
+                // Positionne selon action.ServiceId OU service actif par défaut
+                cmbService.SelectedItem = aiMailerAIServices
+                    .FirstOrDefault(s => s.Id == action.ServiceId)
+                    ?? svc;
+                */
+
+              
+
+                /*
                 // Méthode interne : alimente la liste de modèles selon service
                 void RefreshModels()
                 {
@@ -1327,43 +1382,51 @@ namespace AIMailer
                     {
                         cmbModel.Items.AddRange(svc.Models.ToArray());
                         cmbModel.DisplayMember = "Name";
-                        // tente de sélectionner l’ancien modèle, sinon 1er
+                        // sélectionne l'AIModel dont l'Id == action.ModelId, ou le premier
                         cmbModel.SelectedItem =
-                            svc.Models.FirstOrDefault(m => m == action.Model) ??
-                            svc.Models.FirstOrDefault();
+                            svc.Models.FirstOrDefault(m => m.Id == action.ModelId)
+                            ?? svc.Models.FirstOrDefault();
                     }
                 }
+                
 
                 cmbService.SelectedIndexChanged += (_, __) => RefreshModels();
                 RefreshModels();
+                */
 
                 // ---------- Affichage ----------
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
-                    // Met à jour l’action depuis les contrôles
+                    // ← voici tout ce qu’il faut remplacer
                     action.Name = txtName.Text;
-                    action.Service = cmbService.SelectedItem as AIService;
-                    action.Model = cmbModel.SelectedItem as AIModel;
-                    action.Prompt = txtPrompt.Text;
-                    action.Temperature = (double)nudTemp.Value;
 
-                    // Paramètres
-                    var newParams = new List<AIActionParametre>();
-                    foreach (DataGridViewRow row in dgvParams.Rows)
+                    // Avant : on lisait cmbService / cmbModel
+                    // var svc = (AIService)cmbService.SelectedItem;
+                    // var mdl = (AIModel)  cmbModel.SelectedItem;
+                    // action.ServiceId = svc.Id;
+                    // action.ModelId   = mdl.Id;
+
+                    // Après : on lit cmbServiceModel
+                    var sel = (ServiceModelEntry)cmbServiceModel.SelectedItem;
+                    if (cmbServiceModel.SelectedIndex == 0)
                     {
-                        if (row.IsNewRow) continue;
-                        var name = row.Cells[0].Value?.ToString() ?? "";
-                        var type = row.Cells[1].Value is AIActionParametreType t ? t : AIActionParametreType.String;
-                        var value = row.Cells[2].Value?.ToString() ?? "";
-                        // ignore les lignes vides
-                        if (string.IsNullOrWhiteSpace(name) && string.IsNullOrWhiteSpace(value))
-                            continue;
-                        newParams.Add(new AIActionParametre { Name = name, Type = type, Value = value });
+                        // “Default” choisi → on vide l’override
+                        action.ServiceId = null;
+                        action.ModelId = null;
                     }
-                    action.Parametres = newParams;
-                    // Enregistre fichier configuration
+                    else
+                    {
+                        action.ServiceId = sel.Service.Id;
+                        action.ModelId = sel.Model.Id;
+                    }
+
+                    action.Prompt = txtPrompt.Text;
+                    action.Temperature =  Math.Round((double)nudTemp.Value, aiMailerTemperaturePrecision);
+
+                    // … le reste (paramètres, SaveConfigurationFile)
                     SaveConfigurationFile(false);
                 }
+                
             }
         }
 
