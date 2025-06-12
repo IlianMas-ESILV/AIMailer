@@ -1508,9 +1508,9 @@ namespace AIMailer
             };
 
             // Position du panneau d'Actions
-            // aiMailerPaletteActions.Location = new Point(this.Right -15, this.Top);
-            Point position = Cursor.Position;
-            aiMailerPaletteActions.Location = new Point(position.X, position.Y);
+            aiMailerPaletteActions.Location = new Point(this.Right -15, this.Top);
+            // Point position = Cursor.Position;
+            // aiMailerPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
             Panel panel = new Panel { BackColor = Color.Transparent };
