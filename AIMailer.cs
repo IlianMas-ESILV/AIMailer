@@ -39,11 +39,13 @@ namespace AIMailer
         private const string aiMailerName = "AIMailer";
         private const string aiMailerEditorName = "aiMailerEditor";
         private const string aiMailerActionPanelName = "aiMailerActionPanel";
+        private const string aiMailerPaletteActionsTitle = "Actions IA";
         private const string aiMailerErrorShowTitle = "Erreur " + aiMailerName;
         private const string textFileMenuTextOpenLabel = "Ouvrir un fichier";
         private const string textFileMenuTextSaveLabel = "Enregistrer sous...";
         private const string textFileMenuConfigEditLabel = "Éditer la configuration";
         private const string textFileMenuRestartLabel = "Actualiser la configuration...";
+        private const string textEditorActionsIAMenuLabel = aiMailerPaletteActionsTitle + "...";
         private const string textEditorAnnulerMenuLabel = "Annuler (Ctrl-Z)";
         private const string textEditorRefaireMenuLabel = "Rétablir (Ctrl-Y)";
         private const string textEditorEffacerMenuLabel = "Effacer";
@@ -67,6 +69,7 @@ namespace AIMailer
         private const string stringMaskChatPopupPrompt = "[Modèle] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}\n\n";
         private const string aiMailerTripleClicSentenceCars = ".?!\n";    // Ponctuation de début de phrase
         private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
+        private const string actionPanelButtonCfgMenuLabel = "Configurer";
         private const string aiMailerActionCfgTitle = "Configuration : ";
         private const string aiMailerActionCfgName = "Nom :";
         private const string aiMailerActionCfgPrompt = "Prompt :";
@@ -92,7 +95,7 @@ namespace AIMailer
         private const int textFontSliderWidth = 200, textFontSliderHeight = 40;   // Taille du curseur de police
         private const int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
         private const int textWidth = 800, textHeight = 400;
-        private const int buttonXOffset = 1, buttonYOffset = 10, buttonYSpace = 10;
+        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5;
         private const int buttonWidth = 110, buttonHeight = 30;
         private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
@@ -663,7 +666,7 @@ namespace AIMailer
             if (!aiBoutonsP)
             {
                 // === NOUVEL ITEM ======================================================
-                MenuItem iaActionsMenuItem = new MenuItem("Actions IA");
+                MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
                 iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions();
                 contextMenu.MenuItems.Add(iaActionsMenuItem);
                 contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
@@ -1491,7 +1494,7 @@ namespace AIMailer
             // ─── Création de la palette ──────────────────────────────────
             aiMailerPaletteActions = new Form
             {
-                Text = "Actions IA",
+                Text = aiMailerPaletteActionsTitle,
                 FormBorderStyle = FormBorderStyle.FixedToolWindow, // ← non redimensionnable
                 MaximizeBox = false,                           // (par sécurité)
                 MinimizeBox = false,
@@ -1504,8 +1507,10 @@ namespace AIMailer
                 Owner = this
             };
 
-            const int marge = 20;
-            aiMailerPaletteActions.Location = new Point(this.Right + marge, this.Top);
+            // Position du panneau d'Actions
+            // aiMailerPaletteActions.Location = new Point(this.Right -15, this.Top);
+            Point position = Cursor.Position;
+            aiMailerPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
             Panel panel = new Panel { BackColor = Color.Transparent };
@@ -1529,15 +1534,14 @@ namespace AIMailer
 
                 // menu contextuel « Configuration »
                 ContextMenu ctx = new ContextMenu();
-                ctx.MenuItems.Add(new MenuItem("Configuration",
+                ctx.MenuItems.Add(new MenuItem(actionPanelButtonCfgMenuLabel,
                     (_, __) => AfficherPanneauConfig(action)));
                 btn.ContextMenu = ctx;
 
                 panel.Controls.Add(btn);
                 y += buttonHeight + buttonYSpace;
             }
-            panel.Size = new Size(buttonWidth + 2 * buttonXOffset,
-                                  y + buttonYOffset - buttonYSpace);
+            panel.Size = new Size(buttonWidth + 2 * buttonXOffset, y + buttonYOffset - buttonYSpace);
             aiMailerPaletteActions.ClientSize = panel.Size;
 
             // ─── Gestion du focus après affichage ────────────────────────
@@ -1555,13 +1559,8 @@ namespace AIMailer
             void checkSelectionChange()
             {
                 if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
-                {
-                    if (aiMailerEditor.SelectionStart != selStart0 ||
-                        aiMailerEditor.SelectionLength != selLength0)
-                    {
+                    if (aiMailerEditor.SelectionStart != selStart0 || aiMailerEditor.SelectionLength != selLength0)
                         aiMailerPaletteActions.Close();
-                    }
-                }
             }
 
             keyHandler = (_, __) => checkSelectionChange();
