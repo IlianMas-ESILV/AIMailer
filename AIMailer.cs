@@ -59,8 +59,8 @@ namespace AIMailer
         private const string aiMailerServiceAbsent = "Service: N/C";        // Service AI absent
         private const string aiMailerModeleAbsent = "Modèle: N/C";          // Modèle AI absent
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
-        private const string stringMaskCompletionPopupPrompt = "Appel à l'IA avec... \n\n[Modèle] '{0}'\n\n[Type] '{1}'\n\n[Prompt] {2}'\n\n[temperature] {3}\n\n[max_tokens] {4}";
-        private const string stringMaskChatPopupPrompt = "Appel à l'IA avec... \n\n[Modèle] '{0}'\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}";
+        private const string stringMaskCompletionPopupPrompt = "[Modèle] '{0}'\n\n[Type] '{1}'\n\n[Prompt] {2}'\n\n[temperature] {3}\n\n[max_tokens] {4}";
+        private const string stringMaskChatPopupPrompt = "[Modèle] '{0}'\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}";
         private const string aiMailerErrorStringEmpty = "<vide>";
         private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
@@ -116,7 +116,8 @@ namespace AIMailer
         // *************************************************
         // ***** Variables "Globales" graphiques ***********
         // *************************************************
-        private static TextBox aiMailerEditor = null;                                  //    Application Editor Text Box 
+        private static TextBox aiMailerEditor = null;                                  // Text Box Editeur
+        private static Form aiMailerPaletteActions = null;                                    // Palette d'action 
         private static Stack<string> aiMailerUndoStack = new Stack<string>();          // 🔁 Pile la fonction Undo
         private static Stack<string> aiMailerRedoStack = new Stack<string>();          // 🔁 Pile la fonction Redo
 
@@ -250,12 +251,44 @@ namespace AIMailer
             }
 
             // 3) Construction du corps JSON (on passe svc et mdl)
-            object iaRequestBody = AIMAilerAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
+            var (iaRequestBody, promptToShow) = AIMAilerAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
             if (iaRequestBody == null) return;
+
             var iaRequestBodyJson = new StringContent(
                 JsonSerializer.Serialize(iaRequestBody),
                 Encoding.UTF8,
                 "application/json");
+
+            // ───────────────────────────────────────────────────────────────
+            // 2) Fenêtre d’attente « Veuillez patienter »
+            // ───────────────────────────────────────────────────────────────
+            Form waitDlg = new Form
+            {
+                Text = "Appel à l’IA en cours…",
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                ControlBox = false,
+                StartPosition = FormStartPosition.CenterParent,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink,
+                Font = this.Font,
+                TopMost = true
+            };
+            // Contenu : un label + une barre de progression indéterminée
+            var lbl = new Label
+            {
+                Text = promptToShow,
+                AutoSize = true,                 // le contrôle trouve tout seul sa hauteur
+                MaximumSize = new Size(760, 0),     // largeur maxi (hauteur illimitée : 0)
+                Padding = new Padding(20, 15, 20, 5)
+            };
+            var bar = new ProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Width = 200, Dock = DockStyle.Bottom };
+            waitDlg.Controls.Add(lbl);
+            waitDlg.Controls.Add(bar);
+
+            // Affiche la boîte (modeless mais parent désactivé → effet « modale »)
+            this.Enabled = false;
+            waitDlg.Show(this);
+            waitDlg.Update();           // force rendu immédiat
 
             // 4) Appel HTTP
             using (var client = new HttpClient())
@@ -291,13 +324,22 @@ namespace AIMailer
                 {
                     ErrorShow("ERROR_EDITOR_IACALL", ex.Message, iaRequestBody.ToString());
                 }
+                finally
+                {
+                    // ─── Nettoyage : fermeture de la boîte et ré-activation de l’appli
+                    if (!waitDlg.IsDisposed) waitDlg.Close();
+                    this.Enabled = true;
+                    this.Activate();    // remet la fenêtre au premier plan
+                    aiMailerEditor.Focus();
+                }
+
             }
         }
 
         /// *************************************************************************
         /// ***** Construction du Prompt à envoyer à l'IA selon le Modèle actif *****
         /// *************************************************************************
-        private object AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur, AIService svc , AIModel mdl)
+        private (object Body, string Prompt) AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur, AIService svc , AIModel mdl)
         {
             // Temperature with model ratio
             double calcTemp = action.Temperature * (mdl.TemperatureRatio > 0 ? mdl.TemperatureRatio : 1);
@@ -404,10 +446,10 @@ namespace AIMailer
             }
 
             // Affichage d'une fenetre d'affichage de l'appel avec le message
-            MsgBoxTools.ShowAutoClose(messageToShow);
+            // MsgBoxTools.ShowAutoClose(messageToShow);
 
             // Return built Object (or null on error)
-            return (returnedObject);
+            return (returnedObject, messageToShow );
         }
 
         /// **********************************************************************
@@ -558,7 +600,7 @@ namespace AIMailer
         ///// **********************************************************************
         private void InitialiserInterface()
         {
-            bool aiBoutonsP = true; // Pas de bouton IA
+            bool aiBoutonsP = false; // Pas de bouton IA
 
             // Charte graphique / ergonomie
             this.BackColor = editeurBackColor;
@@ -606,9 +648,26 @@ namespace AIMailer
             };
 
             // ************************************************
-            // 🔁 MENU CONTEXTUEL avec Undo/Redo
+            // 🔁 MENU CONTEXTUEL 
             // ************************************************
             ContextMenu contextMenu = new ContextMenu();
+
+            // ************************************************
+            // 🔁 MENU CONTEXTUEL avec Actions IA
+            // ************************************************
+            if (!aiBoutonsP)
+            {
+                // === NOUVEL ITEM ======================================================
+                MenuItem iaActionsMenuItem = new MenuItem("Actions IA");
+                iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions();
+                contextMenu.MenuItems.Add(iaActionsMenuItem);
+                contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
+
+            }
+
+            // ************************************************
+            // 🔁 MENU CONTEXTUEL avec Undo/Redo
+            // ************************************************
             MenuItem undoMenuItem = new MenuItem(textEditorAnnulerMenuLabel);
             undoMenuItem.Click += (s, e) => UndoLastChange();
             contextMenu.MenuItems.Add(undoMenuItem);
@@ -636,6 +695,7 @@ namespace AIMailer
             };
             contextMenu.MenuItems.Add(pasteMenuItem);
             MenuItem selectAllMenuItem = new MenuItem(textEditorSelectionnerMenuLabel);
+
             selectAllMenuItem.Click += (s, e) => aiMailerEditor.SelectAll();
             contextMenu.MenuItems.Add(selectAllMenuItem);
 
@@ -747,6 +807,8 @@ namespace AIMailer
             this.Controls.Add(fontSizeSlider);
             this.Controls.Add(fontSizeLabel);
         }
+        ///
+
         ///
         /// **********************************************************************
         /// *** Initialisation du Panneau avec les Boutons d'Actions *************
@@ -1426,9 +1488,139 @@ namespace AIMailer
                     // … le reste (paramètres, SaveConfigurationFile)
                     SaveConfigurationFile(false);
                 }
-                
+                this.Activate();          // remet la fenêtre principale devant
+                aiMailerEditor.Focus();   // place le curseur dans la zone de texte
+
             }
         }
+        /// Affiche (ou ramène) la palette d’actions IA.
+        /// • Replace le focus dans l’éditeur dès qu’elle s’affiche.
+        /// • Se ferme automatiquement si la sélection de l’éditeur change.
+        /// </summary>
+        private void OuvrirPaletteActions()
+        {
+            // Palette déjà présente → on la met devant et on sort
+            if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
+            {
+                aiMailerPaletteActions.BringToFront();
+                return;
+            }
+
+            // ─── Mémorise la sélection courante ──────────────────────────
+            int selStart0 = aiMailerEditor.SelectionStart;
+            int selLength0 = aiMailerEditor.SelectionLength;
+
+            // ─── Création de la palette ──────────────────────────────────
+            aiMailerPaletteActions = new Form
+            {
+                Text = "Actions IA",
+                FormBorderStyle = FormBorderStyle.FixedToolWindow, // ← non redimensionnable
+                MaximizeBox = false,                           // (par sécurité)
+                MinimizeBox = false,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,
+                TopMost = true,
+                Font = this.Font,
+                BackColor = this.BackColor,
+                Opacity = 0.80,
+                Owner = this
+            };
+
+            const int marge = 20;
+            aiMailerPaletteActions.Location = new Point(this.Right + marge, this.Top);
+
+            // ─── Panneau et boutons ──────────────────────────────────────
+            Panel panel = new Panel { BackColor = Color.Transparent };
+            aiMailerPaletteActions.Controls.Add(panel);
+
+            int y = buttonYOffset;
+            foreach (var action in aiMailerAIActions)
+            {
+                Button btn = new Button
+                {
+                    Text = action.Name,
+                    Tag = action,
+                    Font = new Font(this.Font.FontFamily, buttonTextFontSize),
+                    Size = new Size(buttonWidth, buttonHeight),
+                    Location = new Point(buttonXOffset, y),
+                    BackColor = buttonBackColor,
+                    ForeColor = buttonForeColor
+                };
+                btn.Click += async (s, _) =>
+                    await AIMAilerAIMethod((AIAction)((Button)s).Tag);
+
+                // menu contextuel « Configuration »
+                ContextMenu ctx = new ContextMenu();
+                ctx.MenuItems.Add(new MenuItem("Configuration",
+                    (_, __) => AfficherPanneauConfig(action)));
+                btn.ContextMenu = ctx;
+
+                panel.Controls.Add(btn);
+                y += buttonHeight + buttonYSpace;
+            }
+            panel.Size = new Size(buttonWidth + 2 * buttonXOffset,
+                                  y + buttonYOffset - buttonYSpace);
+            aiMailerPaletteActions.ClientSize = panel.Size;
+
+            // ─── Gestion du focus après affichage ────────────────────────
+            aiMailerPaletteActions.Shown += (_, __) =>
+            {
+                // Rend la main à la fenêtre principale puis à l’éditeur
+                this.Activate();
+                aiMailerEditor.Focus();
+            };
+
+            // ─── Fermeture auto si la sélection change ───────────────────
+            KeyEventHandler keyHandler = null;
+            MouseEventHandler mouseHandler = null;
+
+            void checkSelectionChange()
+            {
+                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
+                {
+                    if (aiMailerEditor.SelectionStart != selStart0 ||
+                        aiMailerEditor.SelectionLength != selLength0)
+                    {
+                        aiMailerPaletteActions.Close();
+                    }
+                }
+            }
+
+            keyHandler = (_, __) => checkSelectionChange();
+            mouseHandler = (_, __) => checkSelectionChange();
+
+            aiMailerEditor.KeyUp += keyHandler;
+            aiMailerEditor.MouseUp += mouseHandler;
+
+            // Nettoyage : détache les écouteurs quand la palette se ferme
+            aiMailerPaletteActions.FormClosed += (_, __) =>
+            {
+                aiMailerPaletteActions = null;
+                aiMailerEditor.KeyUp -= keyHandler;
+                aiMailerEditor.MouseUp -= mouseHandler;
+            };
+
+            // ─── Petit utilitaire pour redonner immédiatement le focus ───
+            void GiveBackFocus()
+                => BeginInvoke((MethodInvoker)(() =>
+                {
+                    this.Activate();          // remet la fenêtre principale devant
+                    aiMailerEditor.Focus();   // et place le curseur dans le texte
+                }));
+
+            // ▸ Quand on **déplace** la palette
+            aiMailerPaletteActions.Move += (_, __) => GiveBackFocus();
+
+            // ▸ Quand on **clique** n’importe où dans la palette (hors boutons)
+            aiMailerPaletteActions.Click += (_, __) => GiveBackFocus();
+
+            // ▸ Quand on clique sur le panneau translucide
+            panel.Click += (_, __) => GiveBackFocus();
+
+            aiMailerPaletteActions.Show();   // non modale
+        }
+
+
 
     }
 }
