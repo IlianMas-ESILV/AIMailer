@@ -12,3 +12,7 @@ obj/
 /1.Ressources/Fichier Texte Francais AIMailer.txt
 *.png
 /1.Ressources/Ressources/AIMailer logo Other.jpg
+/1. Project Ressources/Ressources
+/AIMailer.cfg
+/AIMailer.ico
+/packages.config
