@@ -36,46 +36,47 @@ namespace AIMailer
         private const string aiMailerConfigFile = "AIMailer.cfg";
         private const string aiMailerAutoSaveFile = "AIMailer.AutoSave.txt"; // 💾 AUTOSAVE : fichier de sauvegarde auto
         private const string aiMailerNotepadExe = "notepad.exe";
+        private const string aiMailerUser32dll = "user32.dll";
         private const string aiMailerName = "AIMailer";
         private const string aiMailerEditorName = "aiMailerEditor";
-        private const string aiMailerActionPanelName = "aiMailerActionPanel";
-        private const string aiMailerPaletteActionsTitle = "Actions IA";
-        private const string aiMailerErrorShowTitle = "Erreur " + aiMailerName;
-        private const string textFileMenuTextOpenLabel = "Ouvrir un fichier";
-        private const string textFileMenuTextSaveLabel = "Enregistrer sous...";
-        private const string textFileMenuConfigEditLabel = "Éditer la configuration";
-        private const string textFileMenuRestartLabel = "Actualiser la configuration...";
+        private const string aiMailerPaletteActionsTitle = "AI Actions";
+        private const string aiMailerErrorShowTitle = "Error " + aiMailerName;
+        private const string textFileMenuTextOpenLabel = "Open file";
+        private const string textFileMenuTextSaveLabel = "Save file to...";
+        private const string textFileMenuConfigEditLabel = "Edit configuration";
+        private const string textFileMenuRestartLabel = "Apply configuration...";
         private const string textEditorActionsIAMenuLabel = aiMailerPaletteActionsTitle + "...";
-        private const string textEditorAnnulerMenuLabel = "Annuler (Ctrl-Z)";
-        private const string textEditorRefaireMenuLabel = "Rétablir (Ctrl-Y)";
-        private const string textEditorEffacerMenuLabel = "Effacer";
-        private const string textEditorCouperMenuLabel = "Couper (Ctrl+X)";
-        private const string textEditorCopierMenuLabel = "Copier (Ctrl+C)";
-        private const string textEditorCollerMenuLabel = "Coller (Ctrl+V)";
-        private const string textEditorSelectionnerMenuLabel = "Tout sélectionner (Ctrl+A)";
-        private const string textFontSliderLabel = "Police : ";
-        private const string textFileMenuTextLabel = "Texte";
+        private const string textEditorAnnulerMenuLabel = "Cancel (Ctrl-Z)";
+        private const string textEditorRefaireMenuLabel = "Apply again(Ctrl-Y)";
+        private const string textEditorEffacerMenuLabel = "Erase";
+        private const string textEditorCouperMenuLabel = "Cut (Ctrl+X)";
+        private const string textEditorCopierMenuLabel = "Copy (Ctrl+C)";
+        private const string textEditorCollerMenuLabel = "Paste (Ctrl+V)";
+        private const string textEditorSelectionnerMenuLabel = "Select All (Ctrl+A)";
+        private const string textFontSliderLabel = "Font : ";
+        private const string textFileMenuTextLabel = "Text";
         private const string configMenuTextLabel = "Configuration";
-        private const string textFileMenuModeleLabel = "Modèles";
-        private const string btnConfigLabel = "\u2699"; // "⚙"; 
-        private const string textFileMenuFilter = "Fichiers texte (*.txt)|*.txt|Tous les fichiers (*.*)|*.*";
-        private const string aiMailerIACallTitle = "Appel à l’IA en cours…";
-        private const string aiMailerRestartWarningTitle = "Confirmation de redémarrage";
-        private const string aiMailerRestartAutoSaveWarning = "Le texte actuel ne peut pas être sauvegardé.\nVoulez-vous vraiment actualiser les actions et relancer l'application ?";
+        private const string textFileMenuModeleLabel = "Models";
+        private const string textFileMenuFilter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+        private const string aiMailerOkButtonText = "Ok";
+        private const string aiMailerCancelButtonText = "Cancel";
+        private const string aiMailerIACallTitle = "AI Call pending…";
+        private const string aiMailerRestartWarningTitle = "Restart confirmation";
+        private const string aiMailerRestartAutoSaveWarning = "The current text can not be saved.\nDo you want to restart ?";
         private const string aiMailerServiceAbsent = "Service: N/C";        // Service AI absent
-        private const string aiMailerModeleAbsent = "Modèle: N/C";          // Modèle AI absent
+        private const string aiMailerModeleAbsent = "Model: N/C";          // Modèle AI absent
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
-        private const string stringMaskCompletionPopupPrompt = "[Modèle] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[temperature] {3}\n\n[max_tokens] {4}\n\n";
-        private const string stringMaskChatPopupPrompt = "[Modèle] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[temperature] {4}\n\n[max_tokens] {5}\n\n";
+        private const string stringMaskCompletionPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[Temperature] {3}\n\n[max_tokens] {4}\n\n";
+        private const string stringMaskChatPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[Temperature] {4}\n\n[max_tokens] {5}\n\n";
         private const string aiMailerTripleClicSentenceCars = ".?!\n";    // Ponctuation de début de phrase
-        private const string aiMailerAICallMsgBoxTitle = "Appel AI..."; // Timer Msg Box Titre        
-        private const string actionPanelButtonCfgMenuLabel = "Configurer";
-        private const string aiMailerActionCfgTitle = "Configuration : ";
-        private const string aiMailerActionCfgName = "Nom :";
-        private const string aiMailerActionCfgPrompt = "Prompt :";
-        private const string aiMailerActionCfgTemperature = "Température :";
-        private const string aiMailerActionCfgSvcModel = "Service / Modèle :";
-        private const string aiMailerActionCfgModelDefault = "<Modèle par défaut>";
+        private const string aiMailerAICallMsgBoxTitle = "AI Call..."; // Timer Msg Box Titre        
+        private const string actionPanelButtonCfgMenuLabel = "Configure";
+        private const string aiMailerActionCfgTitle = "Configuration: ";
+        private const string aiMailerActionCfgName = "Name:";
+        private const string aiMailerActionCfgPrompt = "Prompt:";
+        private const string aiMailerActionCfgTemperature = "Temperature:";
+        private const string aiMailerActionCfgSvcModel = "Service / Model:";
+        private const string aiMailerActionCfgModelDefault = "<Default model>";
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
         private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI
         private int lastClickTime = 0;   // Temps du dernier clic en millisecondes
@@ -95,8 +96,9 @@ namespace AIMailer
         private const int textFontSliderWidth = 200, textFontSliderHeight = 40;   // Taille du curseur de police
         private const int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
         private const int textWidth = 800, textHeight = 400;
-        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5;
-        private const int buttonWidth = 110, buttonHeight = 30;
+        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5, buttonXSpace = 10;
+        private const int buttonIconSize = 32;
+        private const int buttonWidth = buttonIconSize + 8, buttonHeight = buttonWidth;
         private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
         private static readonly Color MyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
@@ -118,15 +120,15 @@ namespace AIMailer
         private const string maskErrorMsgUnknown = "Code Erreur inconnu : {0}"; // Recois le code inconnu
         private static readonly Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
         {
-            { "ERROR_EDITOR_EMPTYSELECTION",   "Veuillez entrer ou sélectionner du texte..." },
-            { "ERROR_EDITOR_IACALL",           "Erreur lors de l'appel à l'IA !" },
-            { "ERROR_EDITOR_CFGFILEOPEN",      "Impossible d'ouvrir le fichier de configuration de l'application !" },
-            { "ERROR_EDITOR_CFGFILEBAD",       "Fichier de configuration de l'application non conforme !" },
-            { "ERROR_EDITOR_CFGFILEUNKNOWN",   "Impossible de trouver le fichier de configuration de l'application !" },
-            { "ERROR_EDITOR_AUTOSAVEERR",      "Impossible d'enregistrer le contenu de l'éditeur !" },
-            { "ERROR_EDITOR_APPRESTART",       "Impossible de redémarrer l'application !" },
-            { "ERROR_EDITOR_IASERVICEUNKNOW",  "Appel impossible car aucun service d'IA n'est sélectionné !" },
-            { "ERROR_EDITOR_IAMODELUNKNOWN",   "Appel impossible car type de modèle inconnu !" }
+            { "ERROR_EDITOR_EMPTYSELECTION",   "Please enter texte..." },
+            { "ERROR_EDITOR_IACALL",           "Error while calling IA!" },
+            { "ERROR_EDITOR_CFGFILEOPEN",      "Configuration file impossible to open!" },
+            { "ERROR_EDITOR_CFGFILEBAD",       "Configuration file not compliant!" },
+            { "ERROR_EDITOR_CFGFILEUNKNOWN",   "Configuration file impossible to find!" },
+            { "ERROR_EDITOR_AUTOSAVEERR",      "Editor text impossible to save!" },
+            { "ERROR_EDITOR_APPRESTART",       "Application impossible to restart !" },
+            { "ERROR_EDITOR_IASERVICEUNKNOW",  "No AI service: AI Call impossible!" },
+            { "ERROR_EDITOR_IAMODELUNKNOWN",   "Unknown AI model: AI call impossible!" }
         };
 
         // *************************************************
@@ -199,30 +201,16 @@ namespace AIMailer
             public List<AIModel> Models { get; set; }   // Modèles AI disponibles avec ce service
         }
 
-        public enum AIActionParametreType
-        {
-            String,
-            DateTime,
-            Email,
-            Style
-        }
-        public class AIActionParametre
-        {
-            public string Name { get; set; }
-            public AIActionParametreType Type { get; set; }
-            public string Value { get; set; }
-        }
         // Description des Actions (Boutons) possibles :
         private class AIAction
         {
             public string Id { get; set; }              // Id de l'action
             public string Name { get; set; }            // Libellé du bouton
+            public string Icon { get; set; }            // Icone du bouton
             public string Prompt { get; set; }          // Prompt système à envoyer à l'IA
             public decimal Temperature { get; set; }      // Temperature
             public string ServiceId { get; set; }
             public string ModelId { get; set; }
-            //public List<AIActionParametre> Parametres { get; set; }
-
         }
 
         ///// **********************************************************************
@@ -608,8 +596,6 @@ namespace AIMailer
         ///// **********************************************************************
         private void InitialiserInterface()
         {
-            bool aiBoutonsP = false; // Pas de bouton IA
-
             // Charte graphique / ergonomie
             this.BackColor = editeurBackColor;
             this.Font = new Font(editeurTextFontFamily, editeurTextFontSize);
@@ -619,26 +605,22 @@ namespace AIMailer
             int menuStripYOffset = InitialiserInterfaceMenu();
 
             // Ajout de la Texte Box Editeur
-            InitialiserInterfaceEditeur(menuStripYOffset, aiBoutonsP); // Pas de bouton IA
+            InitialiserInterfaceEditeur(menuStripYOffset); // Pas de bouton IA
 
             // Ajout du Curseur de Sélection de la taille de la police
             InitialiserInterfaceEditeurCurseurFonte();
 
-            // Ajout des Boutons d'Actions
-            if (aiBoutonsP)
-                InitialiserInterfaceActionButtons(menuStripYOffset);
         }
 
         /// **********************************************************************
         /// *** Initialisation Text Box Editeur **********************************
         /// **********************************************************************
-        private void InitialiserInterfaceEditeur(int menuStripYOffset, bool aiBoutonsP)
+        private void InitialiserInterfaceEditeur(int menuStripYOffset)
         {
             // Taille Textbox 
             this.Text = aiMailerName;
             this.Size = new Size(
-                        textWidth + 2 * textXOffset
-                        + (aiBoutonsP ? buttonWidth + 2 * buttonXOffset + 30 : 0) + 20, // ← espace plus large à droite
+                        textWidth + 2 * textXOffset + 20, 
                         menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar
 );
 
@@ -663,15 +645,12 @@ namespace AIMailer
             // ************************************************
             // 🔁 MENU CONTEXTUEL avec Actions IA
             // ************************************************
-            if (!aiBoutonsP)
-            {
-                // === NOUVEL ITEM ======================================================
-                MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
-                iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions();
-                contextMenu.MenuItems.Add(iaActionsMenuItem);
-                contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
-            }
+            // === NOUVEL ITEM ======================================================
+            MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
+            iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions();
+            contextMenu.MenuItems.Add(iaActionsMenuItem);
+            contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
             // ************************************************
             // 🔁 MENU CONTEXTUEL avec Undo/Redo
@@ -881,70 +860,6 @@ namespace AIMailer
             box.Select(start, end - start);
         }
         ///
-
-        ///
-        /// **********************************************************************
-        /// *** Initialisation du Panneau avec les Boutons d'Actions *************
-        /// **********************************************************************
-        private void InitialiserInterfaceActionButtons(int menuStripYOffset)
-        {
-            // Création du panneau latéral pour les boutons d'actions
-            Panel actionPanel = new Panel
-            {
-                Name = aiMailerActionPanelName,
-                Size = new Size(buttonWidth + 2 * buttonXOffset + buttonConfigXOffset + buttonConfigWidth, // Ajout espace pour bouton config
-                                aiMailerAIActions.Count * (buttonHeight + buttonYSpace) + 2 * buttonYOffset - buttonYSpace),
-                Location = new Point(aiMailerEditor.Right + 10, menuStripYOffset + textYOffset),
-                BorderStyle = buttonPanelBorderStyle,
-                BackColor = buttonPanelBackColor,
-                Anchor = AnchorStyles.Top | AnchorStyles.Right
-            };
-            this.Controls.Add(actionPanel);
-
-            // Création des boutons d'action et boutons config ⚙
-            for (int i = 0, x = buttonXOffset, y = buttonYOffset; i < aiMailerAIActions.Count; y += buttonHeight + buttonYSpace, i++)
-            {
-                var action = aiMailerAIActions[i];
-                Font fonteAction = new Font(this.Font.FontFamily, buttonTextFontSize);
-                Font fonteConfig = new Font(this.Font.FontFamily, buttonTextFontSize - 1);
-
-                // Bouton IA
-                Button btnAction = new Button
-                {
-                    Text = action.Name,
-                    Tag = action, // On lie directement l'action
-                    Font = fonteAction,
-                    Location = new Point(x, y),
-                    BackColor = buttonBackColor,
-                    ForeColor = buttonForeColor,
-                    Size = new Size(buttonWidth, buttonHeight)
-                };
-                btnAction.Click += async (s, e) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
-                actionPanel.Controls.Add(btnAction);
-
-                // Bouton Config ⚙
-                Button btnConfig = new Button
-                {
-                    Text = btnConfigLabel,
-                    Tag = action,
-                    Font = fonteConfig,
-                    Location = new Point(x + buttonWidth + buttonConfigXOffset, y),
-                    Size = new Size(buttonConfigWidth, buttonHeight),
-                    // BackColor = Color.LightGray,
-                    // ForeColor = Color.Black
-                    BackColor = MyColorSnow, // buttonBackColor,
-                    ForeColor = buttonForeColor
-                };
-
-                btnConfig.Click += (s, e) =>
-                {
-                    Button sourceBtn = (Button)s;
-                    Point screenPosition = sourceBtn.PointToScreen(Point.Empty);
-                    AfficherPanneauConfig(action);
-                };
-                actionPanel.Controls.Add(btnConfig);
-            }
-        }
 
         /// **********************************************************************
         /// *** Initialisation Menu de la fenêtre ********************************
@@ -1189,10 +1104,10 @@ namespace AIMailer
             private const int WM_CLOSE = 0x0010;
             private const string DIALOG_CLASS = "#32770";      // classe Win32 d'un MessageBox
 
-            [DllImport("user32.dll", SetLastError = true)]
+            [DllImport(aiMailerUser32dll, SetLastError = true)]
             private static extern IntPtr FindWindow(string lpClass, string lpTitle);
 
-            [DllImport("user32.dll", SetLastError = true)]
+            [DllImport(aiMailerUser32dll, SetLastError = true)]
             private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr w, IntPtr l);
 
             /// <summary>
@@ -1265,31 +1180,6 @@ namespace AIMailer
                 };
                 dlg.Controls.Add(txtName);
                 y += txtName.Height + 15;
-
-                /* Service et modele séparer 999
-                 * // Service -------------------------------------------------------
-                AddLabel("Service :");
-                ComboBox cmbService = new ComboBox
-                {
-                    Left = 140,
-                    Top = y,
-                    Width = ctrlW,
-                    DropDownStyle = ComboBoxStyle.DropDownList
-                };
-                dlg.Controls.Add(cmbService);
-
-                // Modèle --------------------------------------------------------
-                y += cmbService.Height + 10;
-                AddLabel("Modèle :");
-                ComboBox cmbModel = new ComboBox
-                {
-                    Left = 140,
-                    Top = y,
-                    Width = ctrlW,
-                    DropDownStyle = ComboBoxStyle.DropDownList
-                };
-                dlg.Controls.Add(cmbModel);
-                y += cmbModel.Height + 15;*/
 
                 // Service / Modèle fusionné -------------------------
                 AddLabel(aiMailerActionCfgSvcModel);
@@ -1381,7 +1271,7 @@ namespace AIMailer
                 // ---------- Boutons OK / Annuler ----------
                 Button btnOK = new Button
                 {
-                    Text = "OK",
+                    Text = aiMailerOkButtonText,
                     DialogResult = DialogResult.OK,
                     Left = dlg.ClientSize.Width - 200,
                     Width = 80,
@@ -1389,7 +1279,7 @@ namespace AIMailer
                 };
                 Button btnCancel = new Button
                 {
-                    Text = "Annuler",
+                    Text = aiMailerCancelButtonText,
                     DialogResult = DialogResult.Cancel,
                     Left = btnOK.Right + 10,
                     Width = 80,
@@ -1400,54 +1290,11 @@ namespace AIMailer
                 dlg.AcceptButton = btnOK;
                 dlg.CancelButton = btnCancel;
 
-                /*
-                // ---------- Logique Service / Modèle ----------
-                // Remplit la liste des services
-                cmbService.Items.AddRange(aiMailerAIServices.ToArray());
-                cmbService.DisplayMember = "Name";
-                // Sélectionne le service actuel
-
-                // Positionne selon action.ServiceId OU service actif par défaut
-                cmbService.SelectedItem = aiMailerAIServices
-                    .FirstOrDefault(s => s.Id == action.ServiceId)
-                    ?? svc;
-                */
-
-
-
-                /*
-                // Méthode interne : alimente la liste de modèles selon service
-                void RefreshModels()
-                {
-                    cmbModel.Items.Clear();
-                    var svc = cmbService.SelectedItem as AIService;
-                    if (svc?.Models != null)
-                    {
-                        cmbModel.Items.AddRange(svc.Models.ToArray());
-                        cmbModel.DisplayMember = "Name";
-                        // sélectionne l'AIModel dont l'Id == action.ModelId, ou le premier
-                        cmbModel.SelectedItem =
-                            svc.Models.FirstOrDefault(m => m.Id == action.ModelId)
-                            ?? svc.Models.FirstOrDefault();
-                    }
-                }
-                
-
-                cmbService.SelectedIndexChanged += (_, __) => RefreshModels();
-                RefreshModels();
-                */
-
                 // ---------- Affichage ----------
                 if (dlg.ShowDialog(this) == DialogResult.OK)
                 {
                     // ← voici tout ce qu’il faut remplacer
                     action.Name = txtName.Text;
-
-                    // Avant : on lisait cmbService / cmbModel
-                    // var svc = (AIService)cmbService.SelectedItem;
-                    // var mdl = (AIModel)  cmbModel.SelectedItem;
-                    // action.ServiceId = svc.Id;
-                    // action.ModelId   = mdl.Id;
 
                     // Après : on lit cmbServiceModel
                     var sel = (ServiceModelEntry)cmbServiceModel.SelectedItem;
@@ -1516,19 +1363,29 @@ namespace AIMailer
             Panel panel = new Panel { BackColor = Color.Transparent };
             aiMailerPaletteActions.Controls.Add(panel);
 
-            int y = buttonYOffset;
+            int x = buttonYOffset;
             foreach (var action in aiMailerAIActions)
             {
+
                 Button btn = new Button
                 {
-                    Text = action.Name,
+                    Image = new Icon(action.Icon, new Size(buttonIconSize, buttonIconSize)).ToBitmap(),
+                    ImageAlign = ContentAlignment.MiddleCenter, // Centre l'icône
+                    TextImageRelation = TextImageRelation.ImageBeforeText,
+                    FlatStyle = FlatStyle.Standard, // ou System
+
+                    Size = new Size(buttonWidth, buttonHeight),
                     Tag = action,
                     Font = new Font(this.Font.FontFamily, buttonTextFontSize),
-                    Size = new Size(buttonWidth, buttonHeight),
-                    Location = new Point(buttonXOffset, y),
+                    Location = new Point(x, buttonYOffset),
                     BackColor = buttonBackColor,
                     ForeColor = buttonForeColor
                 };
+
+                // Survol du bouton
+                ToolTip toolTip = new ToolTip();
+                toolTip.SetToolTip(btn, action.Name);
+
                 btn.Click += async (s, _) =>
                     await AIMAilerAIMethod((AIAction)((Button)s).Tag);
 
@@ -1539,9 +1396,9 @@ namespace AIMailer
                 btn.ContextMenu = ctx;
 
                 panel.Controls.Add(btn);
-                y += buttonHeight + buttonYSpace;
+                y += buttonWidth + buttonXSpace;
             }
-            panel.Size = new Size(buttonWidth + 2 * buttonXOffset, y + buttonYOffset - buttonYSpace);
+            panel.Size = new Size(x + buttonXOffset, buttonHeight + 2 * buttonYOffset);
             aiMailerPaletteActions.ClientSize = panel.Size;
 
             // ─── Gestion du focus après affichage ────────────────────────
