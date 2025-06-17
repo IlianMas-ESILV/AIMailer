@@ -17,6 +17,8 @@ using System.Text.Json.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
+using Timer = System.Windows.Forms.Timer;   // ← alias explicite
+
 
 /* Context Prompt pour mémo 
 Tu es un assistant IA aussi bien francophone qu'anglophone expert en rédaction, traduction et synthèse de texte. 
@@ -83,7 +85,8 @@ namespace AIMailer
         private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
         private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
         private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
-
+        private int textEditorLeftMargin = 25; //Marge a gauche 
+        private int textEditorRIghtMargin = 5; //Marge a droite
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
@@ -215,6 +218,30 @@ namespace AIMailer
             public string ModelId { get; set; }
         }
 
+
+        private const int EM_SETMARGINS = 0x00D3;   //message pour fixer les marges internes.
+        private const int EC_LEFTMARGIN = 0x0001;   //flags pour dire “je veux régler la marge gauche/droite”.
+        private const int EC_RIGHTMARGIN = 0x0002;
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(
+            IntPtr hWnd,
+            int msg,
+            IntPtr wParam,
+            IntPtr lParam   //lParam (LOWORD) : largeur en pixels de la marge gauche, (HIWORD) la marge droite. Ici on met textEditorLeftMargin dans le low-word et on laisse la droite à 0.
+        );
+
+        /// <summary>
+        /// Définit la marge interne gauche et droite (en pixels) d’une TextBox WinForms.
+        /// </summary>
+        private void SetTextBoxMargins(TextBox txt, int textEditorLeftMargin, int textEditorRightMargin)
+        {
+            IntPtr wParam = (IntPtr)(EC_LEFTMARGIN | EC_RIGHTMARGIN);
+            int lParamValue = (textEditorRIghtMargin << 16) | (textEditorLeftMargin & 0xFFFF);
+            IntPtr lParam = (IntPtr)lParamValue;
+            SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
+        }
+
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Appel à l'IA à partir des boutons ****************************
@@ -279,22 +306,58 @@ namespace AIMailer
                 Font = this.Font,
                 TopMost = true
             };
-            // Contenu : un label + une barre de progression indéterminée
+
+            // ─── Conteneur en grille 2 colonnes ─────────────────────────
+            var layout = new TableLayoutPanel
+            {
+                AutoSize = true,
+                ColumnCount = 2,
+                RowCount = 2,
+                Dock = DockStyle.Fill,
+                Padding = new Padding(20, 15, 20, 15)
+            };
+            // Colonne 0 auto-sized pour l’icône, colonne 1 prend le reste
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            layout.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100f));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+            layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
+
+            // ─── Icône d’information ───────────────────────────────────
+            var pic = new PictureBox
+            {
+                Image = SystemIcons.Information.ToBitmap(),
+                SizeMode = PictureBoxSizeMode.AutoSize,
+                Anchor = AnchorStyles.Top
+            };
+            // On veut qu’elle couvre les deux lignes
+            layout.Controls.Add(pic, 0, 0);
+            layout.SetRowSpan(pic, 2);
+
+            // ─── Label de message ───────────────────────────────────────
             var lbl = new Label
             {
                 Text = promptToShow,
-                AutoSize = true,                 // le contrôle trouve tout seul sa hauteur
-                MaximumSize = new Size(760, 0),     // largeur maxi (hauteur illimitée : 0)
-                Padding = new Padding(20, 15, 20, 5)
+                AutoSize = true,
+                MaximumSize = new Size(700, 0),  // largeur maxi
+                Anchor = AnchorStyles.Left | AnchorStyles.Top
             };
-            var bar = new ProgressBar { Style = ProgressBarStyle.Marquee, MarqueeAnimationSpeed = 30, Width = 200, Dock = DockStyle.Bottom };
-            waitDlg.Controls.Add(lbl);
-            waitDlg.Controls.Add(bar);
+            layout.Controls.Add(lbl, 1, 0);
 
-            // Affiche la boîte (modeless mais parent désactivé → effet « modale »)
+            // ─── Barre de progression indéterminée ─────────────────────
+            // Barre animée 
+            var bar = new MaterialMarquee
+            {
+                Width = 200,               // longueur visible
+                Dock = DockStyle.Top,
+                Margin = new Padding(0, 10, 0, 0)  // espace au-dessus
+            };
+            layout.Controls.Add(bar, 1, 1);
+
+            // ─── On ajoute le layout puis on affiche ────────────────────
+            waitDlg.Controls.Add(layout);
             this.Enabled = false;
             waitDlg.Show(this);
-            waitDlg.Update();           // force rendu immédiat
+            waitDlg.Update();
 
             /// *******************************************************
             /// ***** Apppel http à LM Studio *************************
@@ -642,12 +705,6 @@ namespace AIMailer
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
 
-            // ►► Ajoute ici le watcher de sélection
-            aiMailerEditor.MouseUp += SelectionWatcher;  
-            aiMailerEditor.KeyUp += SelectionWatcher;
-
-
-
             // ************************************************
             // 🔁 MENU CONTEXTUEL 
             // ************************************************
@@ -659,7 +716,6 @@ namespace AIMailer
 
             // === NOUVEL ITEM ======================================================
             MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
-            iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions();
             contextMenu.MenuItems.Add(iaActionsMenuItem);
             contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
@@ -726,8 +782,12 @@ namespace AIMailer
 
             aiMailerEditor.ContextMenu = contextMenu;
             this.Controls.Add(aiMailerEditor);
-            aiMailerEditor.MouseDown += TextBox_MouseDown;
 
+            SetTextBoxMargins(aiMailerEditor, textEditorLeftMargin, textEditorRIghtMargin);
+
+            aiMailerEditor.MouseDown += AiMailerEditor_MouseDown;
+            aiMailerEditor.MouseUp += AiMailerEditor_MouseUp;
+            aiMailerEditor.KeyUp += AiMailerEditor_KeyUp;
         }
 
         // 🔁 AJOUT UNDO : méthode pour annuler la dernière modification IA
@@ -821,26 +881,20 @@ namespace AIMailer
             this.Controls.Add(fontSizeLabel);
         }
 
-        private void SelectionWatcher(object sender, EventArgs e)
+        private void AiMailerEditor_KeyUp (object sender, EventArgs e)
         {
-            if (aiMailerEditor.SelectionLength > 0)
-            {
-                if (aiMailerPaletteActions == null || aiMailerPaletteActions.IsDisposed)
-                    OuvrirPaletteActions();   // affiche la palette
-            }
-            else
-            {
-                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
-                    aiMailerPaletteActions.Close();  // cache la palette
-            }
+               OuvrirPaletteActions();   // affiche la palette
         }
 
-
+        private void AiMailerEditor_MouseUp(object sender, MouseEventArgs e)
+        {
+                OuvrirPaletteActions();
+        }
 
         /////=== Méthode de gestion des clics de souris sur le TextBox ===
-
-        private void TextBox_MouseDown(object sender, MouseEventArgs e)
+        private void AiMailerEditor_MouseDown(object sender, MouseEventArgs e)
         {
+            
             var now = Environment.TickCount;
 
             // Vérifie si le clic est rapproché du précédent (double/triple clic)
@@ -857,6 +911,7 @@ namespace AIMailer
                 TripleClicSelectSentence((TextBox)sender);
                 aiMailerEditorClickCount = 0; // Réinitialisation après action
             }
+
         }
 
         // === Méthode pour sélectionner automatiquement une phrase entière autour du curseur ===
@@ -1353,10 +1408,15 @@ namespace AIMailer
         /// </summary>
         private void OuvrirPaletteActions()
         {
-            // Palette déjà présente → on la met devant et on sort
+            // Verifie s'il existe une sélection
+            if (aiMailerEditor.SelectionLength == 0)
+                return;
+
+            // Si Palette existante → on la met devant et on sort
             if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
             {
                 aiMailerPaletteActions.BringToFront();
+                aiMailerEditor.Focus();
                 return;
             }
 
@@ -1367,8 +1427,8 @@ namespace AIMailer
             // ─── Création de la palette ──────────────────────────────────
             aiMailerPaletteActions = new Form
             {
+                FormBorderStyle = FormBorderStyle.None,       // plus de bordure ni de titre
                 Text = aiMailerPaletteActionsTitle,
-                FormBorderStyle = FormBorderStyle.FixedToolWindow, // ← non redimensionnable
                 MaximizeBox = false,                           // (par sécurité)
                 MinimizeBox = false,
                 ShowInTaskbar = false,
@@ -1376,23 +1436,7 @@ namespace AIMailer
                 TopMost = true,
                 Font = this.Font,
                 BackColor = this.BackColor,
-                Opacity = 0.80,
-                Owner = this
-            };
-
-            // Position du panneau d'Actions
-            aiMailerPaletteActions = new Form
-            {
-                Text = aiMailerPaletteActionsTitle,
-                FormBorderStyle = FormBorderStyle.FixedToolWindow,
-                MaximizeBox = false,
-                MinimizeBox = false,
-                ShowInTaskbar = false,
-                StartPosition = FormStartPosition.Manual,   // ← on posera nous-mêmes
-                TopMost = true,
-                Font = this.Font,
-                BackColor = this.BackColor,
-                Opacity = 0.80,
+                Opacity = 0.8,
                 Owner = this
             };
 
@@ -1451,12 +1495,22 @@ namespace AIMailer
                     ForeColor = buttonForeColor
                 };
 
-                // Survol du bouton
-                ToolTip toolTip = new ToolTip();
-                toolTip.SetToolTip(btn, action.Name);
+                // Affichage par timer du Libellé du bouton au survol sans focus
+                btn.MouseEnter += (s, e) =>
+                {
+                    var b = (Button)s;
+                    // point écran juste sous le bouton (centre X)
+                    Point screen = b.PointToScreen(new Point(b.Width / 2, b.Height));
+                    // on convertit pour le ToolTip : coordonnées dans LA fenêtre propriétaire
+                    Point local = aiMailerPaletteActions.PointToClient(screen);
+                    /* ← La seule ligne nécessaire pour un tip “flottant” */
+                    hoverTip.SetToolTip(btn, action.Name);
+                };
+                // Effacement du Libellé du bouton au survol 
+                btn.MouseLeave += (_, __) => hoverTip.Hide(aiMailerPaletteActions);
 
-                btn.Click += async (s, _) =>
-                    await AIMAilerAIMethod((AIAction)((Button)s).Tag);
+                // Action du bouton : Apple de l'IA
+                btn.Click += async (s, _) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
 
                 // menu contextuel « Configuration »
                 ContextMenu ctx = new ContextMenu();
@@ -1484,9 +1538,9 @@ namespace AIMailer
 
             void checkSelectionChange()
             {
-                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
-                    if (aiMailerEditor.SelectionStart != selStart0 || aiMailerEditor.SelectionLength != selLength0)
-                        aiMailerPaletteActions.Close();
+                // On ferme seulement si la sélection disparaît complètement
+                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed && aiMailerEditor.SelectionLength == 0)
+                    aiMailerPaletteActions.Close();
             }
 
             keyHandler = (_, __) => checkSelectionChange();
@@ -1521,9 +1575,69 @@ namespace AIMailer
             panel.Click += (_, __) => GiveBackFocus();
 
             aiMailerPaletteActions.Show();   // non modale
+            aiMailerEditor.Focus();
         }
 
 
+        /// <summary>
+        /// Barre indéterminée inspirée Material Design :
+        /// un “pavé” glisse en boucle sur le fond.
+        /// </summary>
+        internal sealed class MaterialMarquee : Control
+        {
+            private readonly Timer _timer = new Timer();
+            private int _offset;
 
+            public Color BarColor { get; set; } = Color.DodgerBlue;
+            public int SpeedPx { get; set; } = 4;       // pixels par tick
+            public int BarWidthPx { get; set; } = 80;   // largeur du pavé
+
+            public MaterialMarquee()
+            {
+                DoubleBuffered = true;
+                SetStyle(ControlStyles.AllPaintingInWmPaint
+                       | ControlStyles.UserPaint
+                       | ControlStyles.OptimizedDoubleBuffer, true);
+
+                Height = 6;                 // hauteur “fine”
+                _timer.Interval = 16;       // ~60 Hz
+                _timer.Tick += (s, e) =>
+                {
+                    _offset = (_offset + SpeedPx) % (Width * 2);
+                    Invalidate();
+                };
+                _timer.Start();
+            }
+
+            protected override void OnPaint(PaintEventArgs e)
+            {
+                base.OnPaint(e);
+                e.Graphics.Clear(BackColor);
+
+                using (var b = new SolidBrush(BarColor))
+                {
+                    int x = _offset - BarWidthPx;
+                    // deux copies pour la boucle visuelle
+                    e.Graphics.FillRectangle(b, x, 0, BarWidthPx, Height);
+                    e.Graphics.FillRectangle(b, x - Width, 0, BarWidthPx, Height);
+                }
+            }
+
+            // adapte la largeur du pavé si le contrôle est redimensionné
+            protected override void OnSizeChanged(EventArgs e)
+            {
+                base.OnSizeChanged(e);
+                BarWidthPx = Width / 3;
+            }
+        }
+        private readonly ToolTip hoverTip = new ToolTip
+        {
+            ShowAlways = true,
+            UseFading = true,
+            UseAnimation = true,
+            InitialDelay = 0,      // apparition immédiate
+            ReshowDelay = 0,
+            AutoPopDelay = 3000    // disparaît automatiquement au bout de 3 s
+        };
     }
 }
