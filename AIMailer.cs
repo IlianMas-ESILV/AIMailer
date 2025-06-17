@@ -85,7 +85,7 @@ namespace AIMailer
         private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
         private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
         private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
-        private int textEditorLeftMargin = 25; //Marge a gauche 
+        private int textEditorLeftMargin = 10; //Marge a gauche 
         private int textEditorRightMargin = 5; //Marge a droite
 
         // ******************************************************
@@ -216,30 +216,6 @@ namespace AIMailer
             public decimal Temperature { get; set; }      // Temperature
             public string ServiceId { get; set; }
             public string ModelId { get; set; }
-        }
-
-
-        private const int EM_SETMARGINS = 0x00D3;   //message pour fixer les marges internes.
-        private const int EC_LEFTMARGIN = 0x0001;   //flags pour dire “je veux régler la marge gauche/droite”.
-        private const int EC_RIGHTMARGIN = 0x0002;
-
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
-        private static extern IntPtr SendMessage(
-            IntPtr hWnd,
-            int msg,
-            IntPtr wParam,
-            IntPtr lParam   //lParam (LOWORD) : largeur en pixels de la marge gauche, (HIWORD) la marge droite. Ici on met textEditorLeftMargin dans le low-word et on laisse la droite à 0.
-        );
-
-        /// <summary>
-        /// Définit la marge interne gauche et droite (en pixels) d’une TextBox WinForms.
-        /// </summary>
-        private void SetTextBoxMargins(TextBox txt, int textEditorLeftMargin, int textEditorRightMargin)
-        {
-            IntPtr wParam = (IntPtr)(EC_LEFTMARGIN | EC_RIGHTMARGIN);
-            int lParamValue = (textEditorRightMargin << 16) | (textEditorLeftMargin & 0xFFFF);
-            IntPtr lParam = (IntPtr)lParamValue;
-            SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
         }
 
         ///// **********************************************************************
@@ -1630,6 +1606,10 @@ namespace AIMailer
                 BarWidthPx = Width / 3;
             }
         }
+
+        /// <summary>
+        /// Libellé flottant par timer au survol des boutons sans focus
+        /// </summary>
         private readonly ToolTip hoverTip = new ToolTip
         {
             ShowAlways = true,
@@ -1637,7 +1617,33 @@ namespace AIMailer
             UseAnimation = true,
             InitialDelay = 0,      // apparition immédiate
             ReshowDelay = 0,
-            AutoPopDelay = 3000    // disparaît automatiquement au bout de 3 s
+            AutoPopDelay = 1000    // disparaît automatiquement au bout de 3 s
         };
+ 
+
+        /// <summary>
+        /// Définit la marge interne gauche et droite (en pixels) d’une TextBox WinForms.
+        /// </summary>
+        private void SetTextBoxMargins(TextBox txt, int textEditorLeftMargin, int textEditorRightMargin)
+        {
+            const int EM_SETMARGINS = 0x00D3;   //message pour fixer les marges internes.
+            const int EC_LEFTMARGIN = 0x0001;   //flags pour dire “je veux régler la marge gauche/droite”.
+            const int EC_RIGHTMARGIN = 0x0002;
+
+            IntPtr wParam = (IntPtr)(EC_LEFTMARGIN | EC_RIGHTMARGIN);
+            int lParamValue = (textEditorRightMargin << 16) | (textEditorLeftMargin & 0xFFFF);
+            IntPtr lParam = (IntPtr)lParamValue;
+            SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
+        }
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        private static extern IntPtr SendMessage(
+            IntPtr hWnd,
+            int msg,
+            IntPtr wParam,
+            IntPtr lParam   //lParam (LOWORD) : largeur en pixels de la marge gauche, (HIWORD) la marge droite. Ici on met textEditorLeftMargin dans le low-word et on laisse la droite à 0.
+        );
+
+
     }
 }
