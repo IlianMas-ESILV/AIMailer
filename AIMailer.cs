@@ -86,7 +86,7 @@ namespace AIMailer
         private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
         private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
         private int textEditorLeftMargin = 25; //Marge a gauche 
-        private int textEditorRIghtMargin = 5; //Marge a droite
+        private int textEditorRightMargin = 5; //Marge a droite
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
@@ -237,7 +237,7 @@ namespace AIMailer
         private void SetTextBoxMargins(TextBox txt, int textEditorLeftMargin, int textEditorRightMargin)
         {
             IntPtr wParam = (IntPtr)(EC_LEFTMARGIN | EC_RIGHTMARGIN);
-            int lParamValue = (textEditorRIghtMargin << 16) | (textEditorLeftMargin & 0xFFFF);
+            int lParamValue = (textEditorRightMargin << 16) | (textEditorLeftMargin & 0xFFFF);
             IntPtr lParam = (IntPtr)lParamValue;
             SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
         }
@@ -783,7 +783,7 @@ namespace AIMailer
             aiMailerEditor.ContextMenu = contextMenu;
             this.Controls.Add(aiMailerEditor);
 
-            SetTextBoxMargins(aiMailerEditor, textEditorLeftMargin, textEditorRIghtMargin);
+            SetTextBoxMargins(aiMailerEditor, textEditorLeftMargin, textEditorRightMargin);
 
             aiMailerEditor.MouseDown += AiMailerEditor_MouseDown;
             aiMailerEditor.MouseUp += AiMailerEditor_MouseUp;
