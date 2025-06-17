@@ -79,22 +79,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="..\AIMailer.cs">
+    <Compile Include="AIMailer.cs">
       <SubType>Form</SubType>
       <Link>AIMailer.cs</Link>
     </Compile>
-    <Compile Include="..\AIMailer.Designer.cs">
+    <Compile Include="AIMailer.Designer.cs">
       <DependentUpon>AIMailer.cs</DependentUpon>
       <Link>AIMailer.Designer.cs</Link>
     </Compile>
     <Compile Include="AIMailerMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="AIMailer1.Designer.cs">
-      <AutoGen>True</AutoGen>
-      <DesignTimeSharedInput>True</DesignTimeSharedInput>
-      <DependentUpon>AIMailer.settings</DependentUpon>
-    </Compile>
-    <EmbeddedResource Include="..\AIMailer.resx">
+    <EmbeddedResource Include="AIMailer.resx">
       <DependentUpon>AIMailer.cs</DependentUpon>
       <Link>AIMailer.resx</Link>
     </EmbeddedResource>
@@ -117,10 +112,6 @@
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
     <None Include="Resources\AIMailer.cfg" />
-    <None Include="AIMailer.settings">
-      <Generator>SettingsSingleFileGenerator</Generator>
-      <LastGenOutput>AIMailer1.Designer.cs</LastGenOutput>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

@@ -68,9 +68,10 @@ namespace AIMailer
         private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
         private const string stringMaskCompletionPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[Temperature] {3}\n\n[max_tokens] {4}\n\n";
         private const string stringMaskChatPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[Temperature] {4}\n\n[max_tokens] {5}\n\n";
+        private const string stringMaskChatPopupPromptNA = "N/A";
         private const string aiMailerTripleClicSentenceCars = ".?!\n";    // Ponctuation de début de phrase
         private const string aiMailerAICallMsgBoxTitle = "AI Call..."; // Timer Msg Box Titre        
-        private const string actionPanelButtonCfgMenuLabel = "Configure";
+        private const string actionPanelButtonCfgMenuLabel = "⚙ Configure";
         private const string aiMailerActionCfgTitle = "Configuration: ";
         private const string aiMailerActionCfgName = "Name:";
         private const string aiMailerActionCfgPrompt = "Prompt:";
@@ -79,8 +80,9 @@ namespace AIMailer
         private const string aiMailerActionCfgModelDefault = "<Default model>";
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
         private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI
-        private int lastClickTime = 0;   // Temps du dernier clic en millisecondes
-        private int clickCount = 0;     // Compteur de clics successifs
+        private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
+        private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
+        private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
 
 
         // ******************************************************
@@ -88,15 +90,15 @@ namespace AIMailer
         // ******************************************************
         // Font sizes
         private const string editeurTextFontFamily = "Inter"; // "Segoe UI"
-        private const int editeurTextFontSize = 11;     // Taille de police initiale
-        private const int buttonTextFontSize = editeurTextFontSize - 1;
+        private const int editeurDefaultTextFontSize = aiMeilerDefaultTextFontSize;     // Taille de police initiale
+        private const int buttonTextFontSize = aiMeilerDefaultTextFontSize - 1;
         private const int editeurMenuFontSize = buttonTextFontSize;     // Taille de police menu
         private const int editeurTextFontSizeMin = 6, editeurTextFontSizeMax = 30;
         // Tailles
         private const int textFontSliderWidth = 200, textFontSliderHeight = 40;   // Taille du curseur de police
         private const int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
         private const int textWidth = 800, textHeight = 400;
-        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5, buttonXSpace = 10;
+        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5, buttonXSpace = 5;
         private const int buttonIconSize = 32;
         private const int buttonWidth = buttonIconSize + 8, buttonHeight = buttonWidth;
         private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
@@ -254,9 +256,6 @@ namespace AIMailer
                 return;
             }
 
-            
-
-
             // 3) Construction du corps JSON (on passe svc et mdl)
             var (iaRequestBody, promptToShow) = AIMAilerAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
             if (iaRequestBody == null) return;
@@ -266,9 +265,9 @@ namespace AIMailer
                 Encoding.UTF8,
                 "application/json");
 
-            // ───────────────────────────────────────────────────────────────
+            /// *******************************************************
             // 2) Fenêtre d’attente « Veuillez patienter »
-            // ───────────────────────────────────────────────────────────────
+            // *******************************************************
             Form waitDlg = new Form
             {
                 Text = aiMailerIACallTitle,
@@ -297,7 +296,9 @@ namespace AIMailer
             waitDlg.Show(this);
             waitDlg.Update();           // force rendu immédiat
 
-            // 4) Appel HTTP
+            /// *******************************************************
+            /// ***** Apppel http à LM Studio *************************
+            // *******************************************************
             using (var client = new HttpClient())
             {
                 try
@@ -307,9 +308,12 @@ namespace AIMailer
                         client.DefaultRequestHeaders.Authorization =
                             new AuthenticationHeaderValue("Bearer", svcLocal.Key);
 
+                    // Appel à l'ia  
+
                     var response = await client.PostAsync(mdlLocal.Url, iaRequestBodyJson);
                     response.EnsureSuccessStatusCode();
 
+                    // Deserialisation de la reponse de l'ia
                     var responseJson = await response.Content.ReadAsStringAsync();
                     using (var doc = JsonDocument.Parse(responseJson))
                     {
@@ -357,7 +361,7 @@ namespace AIMailer
             string minPrompt = actionPrompt + " " + texteUtilisateur;
             string fullActionPrompt = svc.Context + " " + actionPrompt;
             string fullActionAndUserPrompt = fullActionPrompt + " " + texteUtilisateur;
-            string notApplString = "N/A";
+            string notApplString = stringMaskChatPopupPromptNA;
             int notApplTokens = 0;
             string messageToShow = null;
             object returnedObject = null;
@@ -596,9 +600,11 @@ namespace AIMailer
         ///// **********************************************************************
         private void InitialiserInterface()
         {
+            this.Font = new Font(editeurTextFontFamily, editeurDefaultTextFontSize);
+
             // Charte graphique / ergonomie
             this.BackColor = editeurBackColor;
-            this.Font = new Font(editeurTextFontFamily, editeurTextFontSize);
+
             //this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
 
             // Ajout du Menu de la fenêtre
@@ -630,12 +636,17 @@ namespace AIMailer
                 Multiline = true,
                 Name = aiMailerEditorName,
                 Size = new Size(textWidth, textHeight),
-                // Font = new Font(textFontFamily != null ? editeurFontFamily :this.Font.FontFamily, editeurTextFontSize),
-                Font = new Font(this.Font.FontFamily, editeurTextFontSize),
+                Font = new Font(this.Font.FontFamily, editeurDefaultTextFontSize),
                 Location = new Point(textXOffset, menuStripYOffset + textYOffset),
                 ScrollBars = ScrollBars.Vertical,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
+
+            // ►► Ajoute ici le watcher de sélection
+            aiMailerEditor.MouseUp += SelectionWatcher;  
+            aiMailerEditor.KeyUp += SelectionWatcher;
+
+
 
             // ************************************************
             // 🔁 MENU CONTEXTUEL 
@@ -767,6 +778,7 @@ namespace AIMailer
         }
 
         // Curseur de changement de taille de fonte
+
         private void InitialiserInterfaceEditeurCurseurFonte()
         {
 
@@ -775,7 +787,7 @@ namespace AIMailer
             {
                 Minimum = editeurTextFontSizeMin,
                 Maximum = editeurTextFontSizeMax,
-                Value = editeurTextFontSize,
+                Value = editeurDefaultTextFontSize,
                 TickFrequency = 2,
                 SmallChange = 1,
                 LargeChange = 2,
@@ -788,7 +800,7 @@ namespace AIMailer
             // Étiquette pour afficher la taille actuelle
             Label fontSizeLabel = new Label
             {
-                Text = textFontSliderLabel + editeurTextFontSize,
+                Text = textFontSliderLabel + editeurDefaultTextFontSize,
                 Font = new Font(this.Font.FontFamily, editeurMenuFontSize),
                 ForeColor = editeurCurseurForeColor,
                 Location = new Point(fontSizeSlider.Right + 10, fontSizeSlider.Top + 5),
@@ -809,6 +821,20 @@ namespace AIMailer
             this.Controls.Add(fontSizeLabel);
         }
 
+        private void SelectionWatcher(object sender, EventArgs e)
+        {
+            if (aiMailerEditor.SelectionLength > 0)
+            {
+                if (aiMailerPaletteActions == null || aiMailerPaletteActions.IsDisposed)
+                    OuvrirPaletteActions();   // affiche la palette
+            }
+            else
+            {
+                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
+                    aiMailerPaletteActions.Close();  // cache la palette
+            }
+        }
+
 
 
         /////=== Méthode de gestion des clics de souris sur le TextBox ===
@@ -818,18 +844,18 @@ namespace AIMailer
             var now = Environment.TickCount;
 
             // Vérifie si le clic est rapproché du précédent (double/triple clic)
-            if (now - lastClickTime < SystemInformation.DoubleClickTime)
-                clickCount++;
+            if (now - aiMailerEditorlastClickTime < SystemInformation.DoubleClickTime)
+                aiMailerEditorClickCount++;
             else
-                clickCount = 1; // Trop espacé → on recommence le comptage
+                aiMailerEditorClickCount = 1; // Trop espacé → on recommence le comptage
 
-            lastClickTime = now;
+            aiMailerEditorlastClickTime = now;
 
             // Si triple clic détecté → sélectionner la phrase entière
-            if (clickCount == 3)
+            if (aiMailerEditorClickCount == 3)
             {
                 TripleClicSelectSentence((TextBox)sender);
-                clickCount = 0; // Réinitialisation après action
+                aiMailerEditorClickCount = 0; // Réinitialisation après action
             }
         }
 
@@ -1355,15 +1381,58 @@ namespace AIMailer
             };
 
             // Position du panneau d'Actions
-            aiMailerPaletteActions.Location = new Point(this.Right -15, this.Top);
+            aiMailerPaletteActions = new Form
+            {
+                Text = aiMailerPaletteActionsTitle,
+                FormBorderStyle = FormBorderStyle.FixedToolWindow,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ShowInTaskbar = false,
+                StartPosition = FormStartPosition.Manual,   // ← on posera nous-mêmes
+                TopMost = true,
+                Font = this.Font,
+                BackColor = this.BackColor,
+                Opacity = 0.80,
+                Owner = this
+            };
+
+            /* ▼▼ NOUVEAU bloc de positionnement ▼▼ */
+            const int margin = 10;                 // petit décalage sous le pointeur
+            Point p = Cursor.Position;     // coordonnées écran de la souris
+            Rectangle work = Screen.FromPoint(p).WorkingArea;
+
+            int posX = p.X;
+            int posY = p.Y + margin;
+
+            // Si la palette dépasserait à droite, on la décale à gauche
+            if (posX + aiMailerPaletteActions.Width > work.Right)
+                posX = work.Right - aiMailerPaletteActions.Width;
+
+            // Si elle dépasserait en bas, on la met au-dessus du pointeur
+            if (posY + aiMailerPaletteActions.Height > work.Bottom)
+                posY = p.Y - margin - aiMailerPaletteActions.Height;
+
+            aiMailerPaletteActions.Location = new Point(posX, posY);
+            /* ▲▲ FIN du nouveau bloc ▲▲ */
+
+            // ─── Panneau et boutons ──────────────────────────────────
+            FlowLayoutPanel panel = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                BackColor = Color.Transparent,
+                AutoSize = true,
+                AutoSizeMode = AutoSizeMode.GrowAndShrink
+            };
+            aiMailerPaletteActions.Controls.Add(panel);
             // Point position = Cursor.Position;
             // aiMailerPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
-            Panel panel = new Panel { BackColor = Color.Transparent };
+            
             aiMailerPaletteActions.Controls.Add(panel);
 
-            int x = buttonYOffset;
+            int x = buttonXOffset;
             foreach (var action in aiMailerAIActions)
             {
 
@@ -1396,9 +1465,9 @@ namespace AIMailer
                 btn.ContextMenu = ctx;
 
                 panel.Controls.Add(btn);
-                y += buttonWidth + buttonXSpace;
+                x += buttonWidth + buttonXSpace;
             }
-            panel.Size = new Size(x + buttonXOffset, buttonHeight + 2 * buttonYOffset);
+            panel.Size = new Size(x, buttonHeight + 2 * buttonYOffset);
             aiMailerPaletteActions.ClientSize = panel.Size;
 
             // ─── Gestion du focus après affichage ────────────────────────
