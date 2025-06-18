@@ -73,7 +73,7 @@ namespace AIMailer
         private const string stringMaskChatPopupPromptNA = "N/A";
         private const string aiMailerTripleClicSentenceCars = ".?!\n";    // Ponctuation de début de phrase
         private const string aiMailerAICallMsgBoxTitle = "AI Call..."; // Timer Msg Box Titre        
-        private const string actionPanelButtonCfgMenuLabel = "⚙ Configure";
+        private const string actionPanelButtonCfgMenuLabel = "⚙ Edit";
         private const string aiMailerActionCfgTitle = "Configuration: ";
         private const string aiMailerActionCfgName = "Name:";
         private const string aiMailerActionCfgPrompt = "Prompt:";
@@ -151,8 +151,8 @@ namespace AIMailer
         // *****************************************************
         private static List<AIService> aiMailerAIServices = null;               // Liste des Services IA configurés
         private static List<AIAction> aiMailerAIActions = new List<AIAction>(); // Liste des Modèles IA configurés
-        private static AIService svc = null;                 // Ajout pour mémoriser le service actif
-        private static AIModel mdl = null;                     // Ajout pour mémoriser le modèle actif
+        private static AIService aiMailerAIServiceActif = null;                 // Ajout pour mémoriser le service actif
+        private static AIModel aiMailerAIModeleActif = null;                     // Ajout pour mémoriser le modèle actif
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -243,8 +243,8 @@ namespace AIMailer
         private async Task AIMAilerAIMethod(AIAction action)
         {
             // 1) Lookup dynamique ou valeurs globales si override "Default"
-            var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? svc : GetServiceFor(action);
-            var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? mdl : GetModelFor(action);
+            var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? aiMailerAIServiceActif : GetServiceFor(action);
+            var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? aiMailerAIModeleActif : GetModelFor(action);
 
             // 2) Vérifications
             if (svcLocal == null || mdlLocal == null)
@@ -571,11 +571,11 @@ namespace AIMailer
                 aiMailerAIServices = config.Services ?? new List<AIService>();
 
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
-                mdl = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
+                aiMailerAIModeleActif = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
                    ?? aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
 
                 // Trouve le Service correspondant au Modèle par défaut ou sélectionne le premier par défaut
-                svc = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(mdl))
+                aiMailerAIServiceActif = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(aiMailerAIModeleActif))
                     ?? aiMailerAIServices?.FirstOrDefault();
             }
             catch (Exception ex)    // Erreur Fichier mal formatté
@@ -999,12 +999,8 @@ namespace AIMailer
                         item.Click += (s, e) =>
                         {
                             var tagData = (List<object>)((ToolStripMenuItem)s).Tag;
-                            // Remplace ces deux lignes :
-                            // aiMailerAIServiceActif = (AIService)tagData[0];
-                            // aiMailerAIModelActif   = (AIModel)  tagData[1];
-                            // Par celles-ci :
-                            svc = (AIService)tagData[0];
-                            mdl = (AIModel)tagData[1];
+                            aiMailerAIServiceActif = (AIService)tagData[0];
+                            aiMailerAIModeleActif = (AIModel)tagData[1];
                             labelServiceModel.Text = BuildServiceAndModelLabel();
                         };
                         menuService.DropDownItems.Add(item);
@@ -1024,9 +1020,9 @@ namespace AIMailer
         private string BuildServiceAndModelLabel()
         {
             return string.Format(stringMaskServiceAndModel,
-                (svc == null ? aiMailerServiceAbsent : svc.Name),
-                (mdl == null ? aiMailerModeleAbsent : mdl.Name),
-                (mdl == null ? aiMailerModeleAbsent : mdl.Type.ToString()));
+                (aiMailerAIServiceActif == null ? aiMailerServiceAbsent : aiMailerAIServiceActif.Name),
+                (aiMailerAIModeleActif == null ? aiMailerModeleAbsent : aiMailerAIModeleActif.Name),
+                (aiMailerAIModeleActif == null ? aiMailerModeleAbsent : aiMailerAIModeleActif.Type.ToString()));
         }
 
         /// ********************************************************
@@ -1208,8 +1204,8 @@ namespace AIMailer
             // ---------- Fenêtre modale ----------
             using (Form dlg = new Form())
             {
-                var globalService = svc;
-                var globalModel = mdl;
+                var globalService = aiMailerAIServiceActif;
+                var globalModel = aiMailerAIModeleActif;
                 dlg.Text = $"{aiMailerActionCfgTitle}{action.Name}";
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.StartPosition = FormStartPosition.CenterParent;
@@ -1261,8 +1257,8 @@ namespace AIMailer
                 // 1) “Default” → utilise le service/modèle global sélectionné en haut
                 entries.Add(new ServiceModelEntry
                 {
-                    Service = svc,      // ton champ global
-                    Model = mdl,      // ton champ global
+                    Service = aiMailerAIServiceActif,      // ton champ global
+                    Model = aiMailerAIModeleActif,      // ton champ global
                     Text = aiMailerActionCfgModelDefault
                 });
 
