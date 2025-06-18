@@ -130,7 +130,6 @@ namespace AIMailer
         private const string maskErrorMsgUnknown = "Code Erreur inconnu : {0}"; // Recois le code inconnu
         private static readonly Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
         {
-            { "ERROR_EDITOR_NOSELECTION",      "Please select text..." },
             { "ERROR_EDITOR_NOTEXT",           "Please enter text..." },
             { "ERROR_EDITOR_IACALL",           "Error while calling IA!" },
             { "ERROR_EDITOR_CFGFILEOPEN",      "Configuration file impossible to open!" },
@@ -334,7 +333,6 @@ namespace AIMailer
                 Margin = new Padding(0, 10, 0, 0)  // espace au-dessus
             };
             layout.Controls.Add(bar, 1, 1);
-
             // ─── On ajoute le layout puis on affiche ────────────────────
             waitDlg.Controls.Add(layout);
             this.Enabled = false;
@@ -1495,7 +1493,21 @@ namespace AIMailer
                     hoverTip.SetToolTip(btn, action.Name);
                 };
                 // Effacement du Libellé du bouton au survol 
-                btn.MouseLeave += (_, __) => hoverTip.Hide(aiMailerPaletteActions);
+                btn.MouseLeave += (s, e) =>
+                {
+                    if (hoverTip != null)
+                    {
+                        try
+                        {
+                            hoverTip.Hide(aiMailerPaletteActions);
+                        }
+                        catch (Exception)
+                        {
+                            // Le hoverTip a été disposé entre-temps, on ignore silencieusement
+                        }
+                    }
+                };
+
 
                 // Action du bouton : Apple de l'IA
                 btn.Click += async (s, _) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
