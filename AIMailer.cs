@@ -85,8 +85,11 @@ namespace AIMailer
         private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
         private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
         private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
-        private int textEditorLeftMargin = 10; //Marge a gauche 
-        private int textEditorRightMargin = 5; //Marge a droite
+        private const int textEditorLeftMargin = 10; //Marge a gauche 
+        private const int textEditorRightMargin = 5; //Marge a droite
+        private const int actionPanelXOffset = 0;   // Déclalage X du panneau d'Actions
+        private const int actionPanelYOffset = 10;   // Déclalage Y du panneau d'Actions
+
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
@@ -117,7 +120,6 @@ namespace AIMailer
         private static readonly Color buttonPanelBackColor = Color.Empty;
         private static readonly Color buttonBackColor = MyColorBluePale2;
         private static readonly Color buttonForeColor = MyColorBlueDark;
-        private static readonly BorderStyle buttonPanelBorderStyle = BorderStyle.None;
 
         // ********************************
         // ***** Error Messages ***********
@@ -686,37 +688,28 @@ namespace AIMailer
             // ************************************************
             ContextMenu contextMenu = new ContextMenu();
 
-            // ************************************************
-            // 🔁 MENU CONTEXTUEL avec Actions IA
-            // ************************************************
-
+            // 🔁 Menu contextuel : Actions IA
             // === NOUVEL ITEM ======================================================
             MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
             contextMenu.MenuItems.Add(iaActionsMenuItem);
             contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
-            // ************************************************
-            // 🔁 MENU CONTEXTUEL avec Undo/Redo
-            // ************************************************
+            // 🔁 Menu contextuel : Undo/Redo
             MenuItem undoMenuItem = new MenuItem(textEditorAnnulerMenuLabel);
-            undoMenuItem.Click += (s, e) => UndoLastChange();
+            undoMenuItem.Click += (s, e) => EditorUndoLastChange();
             contextMenu.MenuItems.Add(undoMenuItem);
-
             MenuItem redoMenuItem = new MenuItem(textEditorRefaireMenuLabel);
-            redoMenuItem.Click += (s, e) => RedoLastChange();
+            redoMenuItem.Click += (s, e) => EditorRedoLastChange();
             contextMenu.MenuItems.Add(redoMenuItem);
             contextMenu.MenuItems.Add("-");
 
+            // 🔁 Menu contextuel : Erase
             MenuItem clearMenuItem = new MenuItem(textEditorEffacerMenuLabel);
-            clearMenuItem.Click += (s, e) =>
-            {
-                aiMailerUndoStack.Push(aiMailerEditor.Text);
-                aiMailerRedoStack.Clear();
-                aiMailerEditor.Clear();
-            };
+            clearMenuItem.Click += (s, e) => EditorEraseText();
             contextMenu.MenuItems.Add(clearMenuItem);
             contextMenu.MenuItems.Add("-");
 
+            // 🔁 Menu contextuel : Couper, Coller, Paste, Select all
             MenuItem cutMenuItem = new MenuItem(textEditorCouperMenuLabel);
             cutMenuItem.Click += (s, e) =>
             {
@@ -746,7 +739,7 @@ namespace AIMailer
             {
                 if (e.Control && e.KeyCode == Keys.Y)
                 {
-                    RedoLastChange();
+                    EditorRedoLastChange();
                     e.SuppressKeyPress = true;
                 }
                 else if (!e.Control && !e.Alt && e.KeyCode != Keys.ShiftKey)
@@ -761,13 +754,14 @@ namespace AIMailer
 
             SetTextBoxMargins(aiMailerEditor, textEditorLeftMargin, textEditorRightMargin);
 
+            // Gestion du Triple click et des actions IA
             aiMailerEditor.MouseDown += AiMailerEditor_MouseDown;
             aiMailerEditor.MouseUp += AiMailerEditor_MouseUp;
             aiMailerEditor.KeyUp += AiMailerEditor_KeyUp;
         }
 
         // 🔁 AJOUT UNDO : méthode pour annuler la dernière modification IA
-        private void UndoLastChange()
+        private void EditorUndoLastChange()
         {
             // Empile l'Editeur sur le Redo et le remplace par un Dépile du Undo 
             if (aiMailerUndoStack.Count > 0)
@@ -779,7 +773,7 @@ namespace AIMailer
                 SystemSounds.Beep.Play(); // Aucun texte à annuler
         }
         /// 🔁 REDO : rétablir après un undo
-        private void RedoLastChange()
+        private void EditorRedoLastChange()
         {
             // Empile l'Editeur sur le Undo et le remplace par un Dépile du Redo
             if (aiMailerRedoStack.Count > 0)
@@ -790,15 +784,23 @@ namespace AIMailer
             else
                 SystemSounds.Beep.Play();
         }
+        /// Effacer le texte de l'éditeur
+        private void EditorEraseText()
+        {
+            // Empile l'Editeur sur le Undo et le remplace par un Dépile du Redo
+            aiMailerUndoStack.Push(aiMailerEditor.Text);
+            aiMailerRedoStack.Clear();
+            aiMailerEditor.Clear();
+        }
 
         /// 🔁 GESTION CLAVIER Ctrl+Z / Ctrl+Y
         protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
         {
             bool rtn = true;
             if (keyData == (Keys.Control | Keys.Z))
-                UndoLastChange();
+                EditorUndoLastChange();
             else if (keyData == (Keys.Control | Keys.Y))
-                RedoLastChange();
+                EditorRedoLastChange();
             else rtn = base.ProcessCmdKey(ref msg, keyData);
             return rtn;
         }
@@ -932,17 +934,20 @@ namespace AIMailer
             ToolStripMenuItem menuFichier = new ToolStripMenuItem(textFileMenuTextLabel);
             ToolStripMenuItem menuAnnuler = new ToolStripMenuItem(textEditorAnnulerMenuLabel);
             ToolStripMenuItem menuRefaire = new ToolStripMenuItem(textEditorRefaireMenuLabel);
+            ToolStripMenuItem menuEffacer = new ToolStripMenuItem(textEditorEffacerMenuLabel);
             ToolStripMenuItem menuOuvrir = new ToolStripMenuItem(textFileMenuTextOpenLabel);
             ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem(textFileMenuTextSaveLabel);
 
-            menuAnnuler.Click += (s, e) => UndoLastChange();
-            menuRefaire.Click += (s, e) => RedoLastChange();
-
+            menuAnnuler.Click += (s, e) => EditorUndoLastChange();
+            menuRefaire.Click += (s, e) => EditorRedoLastChange();
+            menuEffacer.Click += (s, e) => EditorEraseText();
             menuOuvrir.Click += MenuOuvrir_Click;
             menuEnregistrer.Click += MenuEnregistrer_Click;
 
             menuFichier.DropDownItems.Add(menuAnnuler);
             menuFichier.DropDownItems.Add(menuRefaire);
+            menuFichier.DropDownItems.Add(new ToolStripSeparator());
+            menuFichier.DropDownItems.Add(menuEffacer);
             menuFichier.DropDownItems.Add(new ToolStripSeparator());
             menuFichier.DropDownItems.Add(menuOuvrir);
             menuFichier.DropDownItems.Add(menuEnregistrer);
@@ -1290,8 +1295,6 @@ namespace AIMailer
                 }
                 cmbServiceModel.SelectedIndex = idx;
 
-
-
                 // Prompt --------------------------------------------------------
                 AddLabel(aiMailerActionCfgPrompt);
                 TextBox txtPrompt = new TextBox
@@ -1322,8 +1325,6 @@ namespace AIMailer
                 };
                 dlg.Controls.Add(nudTemp);
                 y += nudTemp.Height + 20;
-
-
 
                 // ---------- Boutons OK / Annuler ----------
                 Button btnOK = new Button
@@ -1417,24 +1418,23 @@ namespace AIMailer
             };
 
             /* ▼▼ NOUVEAU bloc de positionnement ▼▼ */
-            const int margin = 10;                 // petit décalage sous le pointeur
             Point p = Cursor.Position;     // coordonnées écran de la souris
             Rectangle work = Screen.FromPoint(p).WorkingArea;
 
-            int posX = p.X;
-            int posY = p.Y + margin;
-
+            int posX = p.X + actionPanelXOffset; 
+            int posY = p.Y + actionPanelYOffset;
+            
             // Si la palette dépasserait à droite, on la décale à gauche
             if (posX + aiMailerPaletteActions.Width > work.Right)
                 posX = work.Right - aiMailerPaletteActions.Width;
 
             // Si elle dépasserait en bas, on la met au-dessus du pointeur
             if (posY + aiMailerPaletteActions.Height > work.Bottom)
-                posY = p.Y - margin - aiMailerPaletteActions.Height;
-
+                posY = p.Y - 3 * actionPanelYOffset; // - aiMailerPaletteActions.Height;
+            
             aiMailerPaletteActions.Location = new Point(posX, posY);
             /* ▲▲ FIN du nouveau bloc ▲▲ */
-
+            
             // ─── Panneau et boutons ──────────────────────────────────
             FlowLayoutPanel panel = new FlowLayoutPanel
             {

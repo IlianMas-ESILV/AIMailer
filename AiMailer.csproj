@@ -84,17 +84,14 @@
   <ItemGroup>
     <Compile Include="AIMailer.cs">
       <SubType>Form</SubType>
-      <Link>AIMailer.cs</Link>
     </Compile>
     <Compile Include="AIMailer.Designer.cs">
       <DependentUpon>AIMailer.cs</DependentUpon>
-      <Link>AIMailer.Designer.cs</Link>
     </Compile>
     <Compile Include="AIMailerMain.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="AIMailer.resx">
       <DependentUpon>AIMailer.cs</DependentUpon>
-      <Link>AIMailer.resx</Link>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
