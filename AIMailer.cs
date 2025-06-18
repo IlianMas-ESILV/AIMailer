@@ -48,7 +48,7 @@ namespace AIMailer
         private const string textFileMenuConfigEditLabel = "Edit configuration";
         private const string textFileMenuRestartLabel = "Apply configuration...";
         private const string textEditorActionsIAMenuLabel = aiMailerPaletteActionsTitle + "...";
-        private const string textEditorAnnulerMenuLabel = "Cancel (Ctrl-Z)";
+        private const string textEditorAnnulerMenuLabel = "Cancel change (Ctrl-Z)";
         private const string textEditorRefaireMenuLabel = "Apply again(Ctrl-Y)";
         private const string textEditorEffacerMenuLabel = "Erase";
         private const string textEditorCouperMenuLabel = "Cut (Ctrl+X)";
@@ -80,6 +80,9 @@ namespace AIMailer
         private const string aiMailerActionCfgTemperature = "Temperature:";
         private const string aiMailerActionCfgSvcModel = "Service / Model:";
         private const string aiMailerActionCfgModelDefault = "<Default model>";
+        private const string aiMailerErrorLevelLabel = "[Level {1}]";
+        private const string aiMailerErrorLevelMsgTrunc = "...";
+
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
         private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI
         private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
@@ -127,7 +130,8 @@ namespace AIMailer
         private const string maskErrorMsgUnknown = "Code Erreur inconnu : {0}"; // Recois le code inconnu
         private static readonly Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
         {
-            { "ERROR_EDITOR_EMPTYSELECTION",   "Please enter texte..." },
+            { "ERROR_EDITOR_NOSELECTION",      "Please select text..." },
+            { "ERROR_EDITOR_NOTEXT",           "Please enter text..." },
             { "ERROR_EDITOR_IACALL",           "Error while calling IA!" },
             { "ERROR_EDITOR_CFGFILEOPEN",      "Configuration file impossible to open!" },
             { "ERROR_EDITOR_CFGFILEBAD",       "Configuration file not compliant!" },
@@ -143,8 +147,8 @@ namespace AIMailer
         // *************************************************
         private static TextBox aiMailerEditor = null;                                  // Text Box Editeur
         private static Form aiMailerPaletteActions = null;                                    // Palette d'action 
-        private static Stack<string> aiMailerUndoStack = new Stack<string>();          // 🔁 Pile la fonction Undo
-        private static Stack<string> aiMailerRedoStack = new Stack<string>();          // 🔁 Pile la fonction Redo
+        private static readonly Stack<string> aiMailerUndoStack = new Stack<string>();          // 🔁 Pile la fonction Undo
+        private static readonly Stack<string> aiMailerRedoStack = new Stack<string>();          // 🔁 Pile la fonction Redo
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
@@ -257,7 +261,7 @@ namespace AIMailer
                 : aiMailerEditor.SelectedText;
             if (string.IsNullOrWhiteSpace(texteUtilisateur))
             {
-                ErrorShow("ERROR_EDITOR_EMPTYSELECTION", action.Name);
+                ErrorShow("ERROR_EDITOR_NOTEXT", action.Name);
                 return;
             }
 
@@ -691,6 +695,8 @@ namespace AIMailer
             // 🔁 Menu contextuel : Actions IA
             // === NOUVEL ITEM ======================================================
             MenuItem iaActionsMenuItem = new MenuItem(textEditorActionsIAMenuLabel);
+            iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions(true);
+
             contextMenu.MenuItems.Add(iaActionsMenuItem);
             contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
@@ -1126,24 +1132,24 @@ namespace AIMailer
         /// *******************************************************
         private void ErrorShow(string msgKey, string errorLevel1 = "", string errorLevel2 = "", string errorLevel3 = "", string errorLevel4 = "")
         {
-            const string cut = "...";
+            const string trunc = aiMailerErrorLevelLabel;
             string msgLabel;
 
             if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
                 msgLabel = string.Format(maskErrorMsgUnknown, msgKey);
             MessageBox.Show(msgLabel
-                   + (errorLevel1 == "" ? "" : "\n\n[Level1] " +
+                   + (errorLevel1 == "" ? "" : string.Format(aiMailerErrorLevelLabel,"1") +
                             (errorLevel1.Length < aiMailerErrorStringLenghtMax ? errorLevel1 :
-                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
                    + (errorLevel2 == "" ? "" : "\n\n[Level2] " +
                             (errorLevel2.Length < aiMailerErrorStringLenghtMax ? errorLevel2 :
-                                errorLevel2.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                                errorLevel2.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
                    + (errorLevel3 == "" ? "" : "\n\n[Level3] " +
                             (errorLevel3.Length < aiMailerErrorStringLenghtMax ? errorLevel3 :
-                                errorLevel3.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                                errorLevel3.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
                    + (errorLevel4 == "" ? "" : "\n\n[Level4] " +
                             (errorLevel4.Length < aiMailerErrorStringLenghtMax ? errorLevel4 :
-                                errorLevel4.Substring(0, aiMailerErrorStringLenghtMax) + cut))
+                                errorLevel4.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
 
                    + "\n\n[Modèle] " + BuildServiceAndModelLabel(),
                      aiMailerErrorShowTitle, 
@@ -1379,10 +1385,20 @@ namespace AIMailer
         /// • Replace le focus dans l’éditeur dès qu’elle s’affiche.
         /// • Se ferme automatiquement si la sélection de l’éditeur change.
         /// </summary>
-        private void OuvrirPaletteActions()
+        private void OuvrirPaletteActions( bool contextMenuItem = false)
         {
-            // Verifie s'il existe une sélection
-            if (aiMailerEditor.SelectionLength == 0)
+            // Si appel du Menu de Context
+            if (contextMenuItem)
+            {
+                // Lorsque aucun text (Context menu only)
+                if (aiMailerEditor.Text == null || aiMailerEditor.Text == "")
+                {
+                    ErrorShow("ERROR_EDITOR_NOTEXT");
+                    return;
+                }
+            }
+            // sinon Verifie s'il existe une sélection (appel de la Souris ou bouton)
+            else if (aiMailerEditor.SelectionLength == 0)
                 return;
 
             // Si Palette existante → on la met devant et on sort
