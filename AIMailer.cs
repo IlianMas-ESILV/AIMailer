@@ -31,7 +31,6 @@ namespace AIMailer
 {
     public partial class AIMailer : Form
     {
-
         // ***********************************************
         // ***** Noms et chaines de caractères ***********
         // ***********************************************
@@ -48,8 +47,8 @@ namespace AIMailer
         private const string textFileMenuConfigEditLabel = "Edit configuration";
         private const string textFileMenuRestartLabel = "Apply configuration...";
         private const string textEditorActionsIAMenuLabel = aiMailerPaletteActionsTitle + "...";
-        private const string textEditorAnnulerMenuLabel = "Cancel change (Ctrl-Z)";
-        private const string textEditorRefaireMenuLabel = "Apply again(Ctrl-Y)";
+        private const string textEditorAnnulerMenuLabel = "Undo (Ctrl-Z)";
+        private const string textEditorRefaireMenuLabel = "Redo (Ctrl-Y)";
         private const string textEditorEffacerMenuLabel = "Erase";
         private const string textEditorCouperMenuLabel = "Cut (Ctrl+X)";
         private const string textEditorCopierMenuLabel = "Copy (Ctrl+C)";
@@ -80,7 +79,7 @@ namespace AIMailer
         private const string aiMailerActionCfgTemperature = "Temperature:";
         private const string aiMailerActionCfgSvcModel = "Service / Model:";
         private const string aiMailerActionCfgModelDefault = "<Default model>";
-        private const string aiMailerErrorLevelLabel = "[Level {1}]";
+        private const string aiMailerErrorLevelLabel = "[Level {0}] ";
         private const string aiMailerErrorLevelMsgTrunc = "...";
 
         private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
@@ -1130,30 +1129,31 @@ namespace AIMailer
         /// *******************************************************
         private void ErrorShow(string msgKey, string errorLevel1 = "", string errorLevel2 = "", string errorLevel3 = "", string errorLevel4 = "")
         {
-            const string trunc = aiMailerErrorLevelLabel;
             string msgLabel;
 
             if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
                 msgLabel = string.Format(maskErrorMsgUnknown, msgKey);
-            MessageBox.Show(msgLabel
-                   + (errorLevel1 == "" ? "" : string.Format(aiMailerErrorLevelLabel,"1") +
-                            (errorLevel1.Length < aiMailerErrorStringLenghtMax ? errorLevel1 :
-                                errorLevel1.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
-                   + (errorLevel2 == "" ? "" : "\n\n[Level2] " +
-                            (errorLevel2.Length < aiMailerErrorStringLenghtMax ? errorLevel2 :
-                                errorLevel2.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
-                   + (errorLevel3 == "" ? "" : "\n\n[Level3] " +
-                            (errorLevel3.Length < aiMailerErrorStringLenghtMax ? errorLevel3 :
-                                errorLevel3.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
-                   + (errorLevel4 == "" ? "" : "\n\n[Level4] " +
-                            (errorLevel4.Length < aiMailerErrorStringLenghtMax ? errorLevel4 :
-                                errorLevel4.Substring(0, aiMailerErrorStringLenghtMax) + trunc))
 
-                   + "\n\n[Modèle] " + BuildServiceAndModelLabel(),
-                     aiMailerErrorShowTitle, 
-                     MessageBoxButtons.OK,
-                     MessageBoxIcon.Error
-                );
+            string FormatLevel(string level, string label)
+            {
+                if (string.IsNullOrWhiteSpace(level)) return "";
+                string content = level.Length <= aiMailerErrorStringLenghtMax ? level : level.Substring(0, aiMailerErrorStringLenghtMax) + aiMailerErrorLevelLabel;
+                return "\n\n" + string.Format(aiMailerErrorLevelLabel, label) + content;
+            }
+
+            string fullMessage = msgLabel
+                               + FormatLevel(errorLevel1, "1")
+                               + FormatLevel(errorLevel2, "2")
+                               + FormatLevel(errorLevel3, "3")
+                               + FormatLevel(errorLevel4, "4")
+                               + "\n\n[Modèle] " + BuildServiceAndModelLabel();
+
+            MessageBox.Show(
+                fullMessage,
+                aiMailerErrorShowTitle,
+                MessageBoxButtons.OK,
+                MessageBoxIcon.Error
+            );
         }
 
         /// *************************************************************
