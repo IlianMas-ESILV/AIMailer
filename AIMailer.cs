@@ -1,20 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Drawing;
+//using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Media;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Reflection;
 using System.Runtime.InteropServices;
-using System.Runtime.Remoting.Messaging;
-using System.Security.Policy;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Threading;
+using System.Text.RegularExpressions;
+//using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Timer = System.Windows.Forms.Timer;   // ← alias explicite
@@ -64,9 +62,9 @@ namespace AIMailer
         private const string aiMailerIACallTitle = "AI Call pending…";
         private const string aiMailerRestartWarningTitle = "Restart confirmation";
         private const string aiMailerRestartAutoSaveWarning = "The current text can not be saved.\nDo you want to restart ?";
-        private const string aiMailerServiceAbsent = "Service: N/C";        // Service AI absent
-        private const string aiMailerModeleAbsent = "Model: N/C";          // Modèle AI absent
-        private const string stringMaskServiceAndModel = "{0} | {1} | {2}"; // Service & Modèle string mask 
+        private const string aiMailerServiceAbsent = "Unknown Service";         // Service AI absent
+        private const string aiMailerModeleAbsent = "Unknown Model";            // Modèle AI absent
+        private const string stringMaskServiceAndModel = "{0} | {1} | {2}";     // Masque d'affichage du Service, Modèle, et Type de Modèle
         private const string stringMaskCompletionPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[Temperature] {3}\n\n[max_tokens] {4}\n\n";
         private const string stringMaskChatPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[Temperature] {4}\n\n[max_tokens] {5}\n\n";
         private const string stringMaskChatPopupPromptNA = "N/A";
@@ -80,46 +78,47 @@ namespace AIMailer
         private const string aiMailerActionCfgSvcModel = "Service / Model:";
         private const string aiMailerActionCfgModelDefault = "<Default model>";
         private const string aiMailerErrorLevelLabel = "[Level {0}] ";
-        private const string aiMailerErrorLevelMsgTrunc = "...";
+        private const string aiMailerStringMsgTrunc = "...";
 
-        private const int aiMailerErrorStringLenghtMax = 200;           // Long max d'une chaine d'erreur
-        private const int aiMailerAICallMsgBoxTimer = 6000;             // Timer Msg Box Appel AI
-        private const int aiMeilerDefaultTextFontSize = 11;     // Taille de police initiale
-        private int aiMailerEditorlastClickTime = 0;   // Temps du dernier clic en millisecondes
-        private int aiMailerEditorClickCount = 0;     // Compteur de clics successifs
-        private const int textEditorLeftMargin = 10; //Marge a gauche 
-        private const int textEditorRightMargin = 5; //Marge a droite
-        private const int actionPanelXOffset = 0;   // Déclalage X du panneau d'Actions
-        private const int actionPanelYOffset = 10;   // Déclalage Y du panneau d'Actions
-
+        internal const int aiMailerUndoStackMaxItems = 25;          // Pas plus de 25 Undos
+        private const int aiMailerPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
+        private const int aiMailerErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
+        private const int aiMailerDefaultTextFontSize = 11;         // Taille de police initiale
+        private const int textEditorLeftMargin = 10;                // Marge gauche Editeur
+        private const int textEditorRightMargin = 5;                // Marge droite Editeur
+        private const int actionPanelXOffset = 0;                   // Déclalage X du panneau d'Actions
+        private const int actionPanelYOffset = 10;                  // Déclalage Y du panneau d'Actions
+        private int aiMailerEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
+        private int aiMailerEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
-        private const string editeurTextFontFamily = "Inter"; // "Segoe UI"
-        private const int editeurDefaultTextFontSize = aiMeilerDefaultTextFontSize;     // Taille de police initiale
-        private const int buttonTextFontSize = aiMeilerDefaultTextFontSize - 1;
-        private const int editeurMenuFontSize = buttonTextFontSize;     // Taille de police menu
-        private const int editeurTextFontSizeMin = 6, editeurTextFontSizeMax = 30;
+        private const string editeurTextFontFamily = "Inter";                           // Police par défaut (ou "Segoe UI")
+        private const int editeurDefaultTextFontSize = aiMailerDefaultTextFontSize;     // Taille de police Editeur initiale 
+        private const int buttonTextFontSize = aiMailerDefaultTextFontSize - 1;         // Taille de police Boutons
+        private const int editeurMenuFontSize = buttonTextFontSize;                     // Taille de police Menuq
+        private const int editeurTextFontSizeMin = 6, editeurTextFontSizeMax = 30;      // Tailles de police min & max Curseur de Polices
         // Tailles
-        private const int textFontSliderWidth = 200, textFontSliderHeight = 40;   // Taille du curseur de police
-        private const int textXOffset = 10, textYOffset = 10, textXScrollbar = 25, textYScrollbar = 40;
-        private const int textWidth = 800, textHeight = 400;
-        private const int buttonXOffset = 5, buttonYOffset = 5, buttonYSpace = 5, buttonXSpace = 5;
-        private const int buttonIconSize = 32;
+        private const int textWidth = 800, textHeight = 400;                            // Taille fenetre Editeur initiale
+        private const int textFontSliderWidth = 200, textFontSliderHeight = 40;         // Taille du Curseur de police
+        private const int textXOffset = 10, textYOffset = 10;
+        private const int textXScrollbar = 25, textYScrollbar = 40;                     // Taille Scrollbar Editeur
+        private const int buttonIconSize = 32;                                          // Taille Icones des Boutons
+        private const int buttonXOffset = 5, buttonYOffset = 5;                         // Decalage Boutons
+        private const int buttonXSpace = 5, buttonYSpace = 5;                           // Espacement Boutons
         private const int buttonWidth = buttonIconSize + 8, buttonHeight = buttonWidth;
-        private const int buttonConfigXOffset = 1, buttonConfigWidth = 26;
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
+        // private static readonly Color buttonPanelBackColor = Color.Empty;
+        // private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
         private static readonly Color MyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
         private static readonly Color MyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
         private static readonly Color MyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
-        private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
         private static readonly Color editeurBackColor = MyColorBluePale1;
         private static readonly Color editeurMenuBackColor = MyColorBluePale2;
         private static readonly Color editeurMenuForeColor = MyColorBlueDark;
         private static readonly Color editeurCurseurForeColor = MyColorBlueDark;
-        private static readonly Color buttonPanelBackColor = Color.Empty;
         private static readonly Color buttonBackColor = MyColorBluePale2;
         private static readonly Color buttonForeColor = MyColorBlueDark;
 
@@ -143,10 +142,12 @@ namespace AIMailer
         // *************************************************
         // ***** Variables "Globales" graphiques ***********
         // *************************************************
-        private static TextBox aiMailerEditor = null;                                  // Text Box Editeur
-        private static Form aiMailerPaletteActions = null;                                    // Palette d'action 
-        private static readonly Stack<string> aiMailerUndoStack = new Stack<string>();          // 🔁 Pile la fonction Undo
-        private static readonly Stack<string> aiMailerRedoStack = new Stack<string>();          // 🔁 Pile la fonction Redo
+        private static TextBox aiMailerEditor = null;                                     // Text Box Editeur
+        private static Form aiMailerPaletteActions = null;                                // Palette d'action 
+        // private static readonly Stack<string> aiMailerUndoStack = new Stack<string>(); // 🔁 Pile la fonction Undo
+        // private static readonly Stack<string> aiMailerRedoStack = new Stack<string>(); // 🔁 Pile la fonction Redo
+        private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
+        private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
@@ -161,10 +162,10 @@ namespace AIMailer
         // des seuls ServiceId et ModelId de l'action.
         // ------------------------------------------------------------------
         private AIService GetServiceFor(AIAction action)
-            => aiMailerAIServices.First(s => s.Id == action.ServiceId);
+            => aiMailerAIServices.FirstOrDefault(s => s.Id == action.ServiceId);
 
         private AIModel GetModelFor(AIAction action)
-            => GetServiceFor(action).Models.First(m => m.Id == action.ModelId);
+            => GetServiceFor(action).Models.FirstOrDefault(m => m.Id == action.ModelId);
 
 
         ///// **********************************************************************
@@ -205,7 +206,8 @@ namespace AIMailer
             public string Id { get; set; }              // Id du Service - Eg. LMS
             public string Name { get; set; }            // Nom du Service - Eg. LM Studio (Local)
             public string Uri { get; set; }             // Uri - Eg. "http://server:port"
-            public string Key { get; set; }             // Clé Authentification (optionnelle)
+            public string Key { get; set; }             // Clé d'Authentification (optionnelle)/ surcharge KeyVar
+            public string KeyVar { get; set; }          // Nom de la Var d'Env portant la clé d'Authentification (optionnelle)
             public string Context { get; set; }         // Prompt de Contexte (selon le Type de Modèle)
             public List<AIModel> Models { get; set; }   // Modèles AI disponibles avec ce service
         }
@@ -249,11 +251,17 @@ namespace AIMailer
             var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? aiMailerAIModeleActif : GetModelFor(action);
 
             // 2) Vérifications
-            if (svcLocal == null || mdlLocal == null)
+            if (mdlLocal == null)
+            {
+                ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", action.Name);
+                return;
+            }
+            if (svcLocal == null)
             {
                 ErrorShow("ERROR_EDITOR_IASERVICEUNKNOW", action.Name);
                 return;
             }
+
             string texteUtilisateur = string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText)
                 ? aiMailerEditor.Text
                 : aiMailerEditor.SelectedText;
@@ -340,18 +348,27 @@ namespace AIMailer
 
             /// *******************************************************
             /// ***** Apppel http à LM Studio *************************
-            // *******************************************************
+            // ********************************************************
             using (var client = new HttpClient())
             {
                 try
                 {
                     client.BaseAddress = new Uri(svcLocal.Uri);
+
+                    // Ajout d'une éventuelle clé d'autorisation dans le Header de la Rqt
+                    // 1. On prend le champ "Key" s'il existe
+                    // 2. Sinon on va chercher la valeur de la var dont le nom est dans "KeyVar"
+                    string bearerToken = null;
                     if (!string.IsNullOrEmpty(svcLocal.Key))
+                        bearerToken = svcLocal.Key;
+                    else if (!string.IsNullOrEmpty(svcLocal.KeyVar))
+                        bearerToken = Environment.GetEnvironmentVariable(svcLocal.KeyVar);
+
+                    if (!string.IsNullOrEmpty(bearerToken))
                         client.DefaultRequestHeaders.Authorization =
-                            new AuthenticationHeaderValue("Bearer", svcLocal.Key);
+                            new AuthenticationHeaderValue("Bearer", bearerToken);
 
-                    // Appel à l'ia  
-
+                    // Appel asychrone au Modèle dans LM Studio
                     var response = await client.PostAsync(mdlLocal.Url, iaRequestBodyJson);
                     response.EnsureSuccessStatusCode();
 
@@ -408,11 +425,23 @@ namespace AIMailer
             string messageToShow = null;
             object returnedObject = null;
 
+            // Enlever NewLine en doublons et tronquer "Texte Utilisateur" dans le message à afficher 
+            string userTextShort = Regex.Replace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
+            userTextShort = userTextShort.Length > aiMailerPromptToShowLengthMax 
+                            ? userTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc 
+                            : userTextShort;
+
+            // Enlever NewLine en doublons et tronquer "Full Action Prompt" dans le message à afficher 
+            string fullActionAndUserTextShort = Regex.Replace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
+            fullActionAndUserTextShort = fullActionAndUserTextShort.Length > aiMailerPromptToShowLengthMax
+                            ? fullActionAndUserTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
+                            : fullActionAndUserTextShort;
+
             // Build Prompt depending on Actif Model
             switch (mdl.Type)
             {
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -422,7 +451,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, texteUtilisateur, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -433,7 +462,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUser:            // Modèle ChatUser: Role User 
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -443,7 +472,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserPrompt, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(stringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -464,12 +493,12 @@ namespace AIMailer
                     break;
 
                 case AIModelType.Completion:          // Modèle Completion: Prompt 
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, notApplTokens);
                     returnedObject = new { model = aiModel, prompt = fullActionAndUserPrompt, temperature = calcTemp };
                     break;
 
                 case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
-                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserPrompt, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(stringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new { model = aiModel, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = mdl.TokensMax };
                     break;
 
@@ -482,9 +511,6 @@ namespace AIMailer
                     ErrorShow("ERROR_EDITOR_IAMODELUNKNOWN", svc.Context, actionPrompt, texteUtilisateur, mdl.TokensMax.ToString());
                     break;
             }
-
-            // Affichage d'une fenetre d'affichage de l'appel avec le message
-            // MsgBoxTools.ShowAutoClose(messageToShow);
 
             // Return built Object (or null on error)
             return (returnedObject, messageToShow);
@@ -769,7 +795,7 @@ namespace AIMailer
             // Empile l'Editeur sur le Redo et le remplace par un Dépile du Undo 
             if (aiMailerUndoStack.Count > 0)
             {
-                aiMailerRedoStack.Push(aiMailerEditor.Text);
+                aiMailerRedoStack.Push(aiMailerEditor.Text ?? string.Empty);
                 aiMailerEditor.Text = aiMailerUndoStack.Pop();
             }
             else
@@ -921,7 +947,6 @@ namespace AIMailer
             // Sélectionne la portion de texte détectée
             box.Select(start, end - start);
         }
-        ///
 
         /// **********************************************************************
         /// *** Initialisation Menu de la fenêtre ********************************
@@ -992,18 +1017,18 @@ namespace AIMailer
             ToolStripMenuItem menuService = new ToolStripMenuItem(textFileMenuModeleLabel);
             if (aiMailerAIServices != null)
             {
-                foreach (var service in aiMailerAIServices)
+                foreach (var service in aiMailerAIServices.Where(s => s.Models != null))
                 {
                     if (service.Models == null) continue;
                     foreach (var model in service.Models)
                     {
-                        var item = new ToolStripMenuItem($"{model.Name} ({service.Name})");
-                        item.Tag = new List<object> { service, model };
+                        var item = new ToolStripMenuItem($"{service.Name} | {model.Name}");
+                        item.Tag = new Tuple<AIService, AIModel>(service, model);
                         item.Click += (s, e) =>
                         {
-                            var tagData = (List<object>)((ToolStripMenuItem)s).Tag;
-                            aiMailerAIServiceActif = (AIService)tagData[0];
-                            aiMailerAIModeleActif = (AIModel)tagData[1];
+                            var tagData = (Tuple<AIService, AIModel>)((ToolStripMenuItem)s).Tag;
+                            aiMailerAIServiceActif = tagData.Item1;
+                            aiMailerAIModeleActif = tagData.Item2;
                             labelServiceModel.Text = BuildServiceAndModelLabel();
                         };
                         menuService.DropDownItems.Add(item);
@@ -1102,7 +1127,7 @@ namespace AIMailer
                 { 
                     // Si impossible demande de confirmation à l'utilisateur
                     DialogResult result = MessageBox.Show(aiMailerRestartAutoSaveWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-                    if (result != DialogResult.No)
+                    if (result == DialogResult.No)
                         return; // Annuler le redémarrage si refus de l'utilisateur
                 }
             }
@@ -1137,7 +1162,7 @@ namespace AIMailer
             string FormatLevel(string level, string label)
             {
                 if (string.IsNullOrWhiteSpace(level)) return "";
-                string content = level.Length <= aiMailerErrorStringLenghtMax ? level : level.Substring(0, aiMailerErrorStringLenghtMax) + aiMailerErrorLevelLabel;
+                string content = level.Length <= aiMailerErrorStringLenghtMax ? level : level.Substring(0, aiMailerErrorStringLenghtMax) + aiMailerStringMsgTrunc;
                 return "\n\n" + string.Format(aiMailerErrorLevelLabel, label) + content;
             }
 
@@ -1156,49 +1181,6 @@ namespace AIMailer
             );
         }
 
-        /// *************************************************************
-        /// ***** Fonction générique d'affichage d'une sous-fenetre *****
-        /// ***** pendant: aiMailerAICallMsgBoxTimer millisec       *****
-        /// ***** avec Bouton "Ok"                                  *****
-        /// *************************************************************
-        public static class MsgBoxTools
-        {
-            private const int WM_CLOSE = 0x0010;
-            private const string DIALOG_CLASS = "#32770";      // classe Win32 d'un MessageBox
-
-            [DllImport(aiMailerUser32dll, SetLastError = true)]
-            private static extern IntPtr FindWindow(string lpClass, string lpTitle);
-
-            [DllImport(aiMailerUser32dll, SetLastError = true)]
-            private static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr w, IntPtr l);
-
-            /// <summary>
-            /// Affiche un MessageBox non bloquant qui se ferme après "durationMs" millisecondes.
-            /// </summary>
-            public static void ShowAutoClose(string text,
-                                             string title = aiMailerAICallMsgBoxTitle,
-                                             int durationMs = aiMailerAICallMsgBoxTimer,
-                                             MessageBoxIcon icon = MessageBoxIcon.Information)
-            {
-                // ▶ Le MessageBox doit tourner dans son propre thread STA
-                Thread t = new Thread(() =>
-                {
-                    // ⏱️ Timer : ferme la boîte au bout de durationMs
-                    var _ = Task.Delay(durationMs).ContinueWith(__ =>
-                    {
-                        IntPtr hWnd = FindWindow(DIALOG_CLASS, title);
-                        if (hWnd != IntPtr.Zero) SendMessage(hWnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
-                    });
-
-                    // 🚪 MessageBox "modale" pour CE thread, mais pas pour l'UI principale
-                    MessageBox.Show(text, title, MessageBoxButtons.OK, icon);
-                });
-
-                t.SetApartmentState(ApartmentState.STA); // indispensable pour WinForms
-                t.IsBackground = true;
-                t.Start();
-            }
-        }
         /// <summary>
         /// Ouvre une fenêtre modale permettant d’éditer les propriétés d’une action IA
         /// (ordre : Name, Service, Modèle, Prompt, Température, Paramètres).
@@ -1465,11 +1447,32 @@ namespace AIMailer
             int x = buttonXOffset;
             foreach (var action in aiMailerAIActions)
             {
+                // Lit le fichier Icone du bouton (null si probleme => Bouton sera en texte)
+                Bitmap iconBmp = null;
+                try
+                {
+                    // ① chemin absolu ?  (facultatif, selon où se trouvent tes icônes)
+                    string path = Path.IsPathRooted(action.Icon)
+                                  ? action.Icon
+                                  : Path.Combine(Application.StartupPath, action.Icon);
 
+                    // ② using : l’objet Icon est IDisposable → libère la ressource GDI+
+                    using (var ico = new Icon(path, new Size(buttonIconSize, buttonIconSize)))
+                    {
+                        iconBmp = ico.ToBitmap();
+                    }
+                }
+                catch
+                {
+                    iconBmp = null;   // pas d’icône → le bouton affichera simplement son texte
+                }
+
+                // Crée le bouton Action
                 Button btn = new Button
                 {
-                    Image = new Icon(action.Icon, new Size(buttonIconSize, buttonIconSize)).ToBitmap(),
+                    Image = iconBmp,
                     ImageAlign = ContentAlignment.MiddleCenter, // Centre l'icône
+                    Text = (iconBmp == null ? action.Name : string.Empty),
                     TextImageRelation = TextImageRelation.ImageBeforeText,
                     FlatStyle = FlatStyle.Standard, // ou System
 
@@ -1668,6 +1671,33 @@ namespace AIMailer
             IntPtr lParam   //lParam (LOWORD) : largeur en pixels de la marge gauche, (HIWORD) la marge droite. Ici on met textEditorLeftMargin dans le low-word et on laisse la droite à 0.
         );
 
+    }
 
+    // -----------------------------------------------------------------------------
+    // Extensions "Stack-like" pour LinkedList<T>
+    // Conserve Push / Pop tout en limitant la taille à 25 éléments.
+    // -----------------------------------------------------------------------------
+    internal static class LinkedListStackExtensions
+    {
+        /// Ajoute un élément en fin de liste (top de pile)
+        public static void Push(this LinkedList<string> list, string value)
+        {
+            list.AddLast(value ?? string.Empty);
+
+            // tronque l'historique au-delà de aiMailerUndoStackMaxNb
+            if (list.Count > AIMailer.aiMailerUndoStackMaxItems)
+                list.RemoveFirst();
+        }
+
+        /// Retire et retourne le dernier élément (top de pile)
+        public static string Pop(this LinkedList<string> list)
+        {
+            if (list.Count == 0)
+                return string.Empty; // Aucun texte à annuler
+
+            string value = list.Last.Value;
+            list.RemoveLast();
+            return value;
+        }
     }
 }
