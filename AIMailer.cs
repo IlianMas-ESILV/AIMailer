@@ -80,7 +80,7 @@ namespace AIMailer
         private const string aiMailerErrorLevelLabel = "[Level {0}] ";
         private const string aiMailerStringMsgTrunc = "...";
 
-        internal const int aiMailerUndoStackMaxItems = 25;          // Pas plus de 25 Undos
+        internal const int aiMailerUndoStackMaxItems = 99;          // Pas plus de 99 Undos
         private const int aiMailerPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
         private const int aiMailerErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
         private const int aiMailerDefaultTextFontSize = 11;         // Taille de police initiale
@@ -90,6 +90,7 @@ namespace AIMailer
         private const int actionPanelYOffset = 10;                  // Déclalage Y du panneau d'Actions
         private int aiMailerEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
         private int aiMailerEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
+        private const int aiMailerEditeurHitGroupTimeMax = 500;     // Limite de temps (msec) pour le regroupement de texte (Undo)
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
@@ -144,18 +145,19 @@ namespace AIMailer
         // *************************************************
         private static TextBox aiMailerEditor = null;                                     // Text Box Editeur
         private static Form aiMailerPaletteActions = null;                                // Palette d'action 
-        // private static readonly Stack<string> aiMailerUndoStack = new Stack<string>(); // 🔁 Pile la fonction Undo
-        // private static readonly Stack<string> aiMailerRedoStack = new Stack<string>(); // 🔁 Pile la fonction Redo
-        private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
-        private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
         // *****************************************************
-        private static List<AIService> aiMailerAIServices = null;               // Liste des Services IA configurés
-        private static List<AIAction> aiMailerAIActions = new List<AIAction>(); // Liste des Modèles IA configurés
-        private static AIService aiMailerAIServiceActif = null;                 // Ajout pour mémoriser le service actif
-        private static AIModel aiMailerAIModeleActif = null;                     // Ajout pour mémoriser le modèle actif
+        private static List<AIService> aiMailerAIServices = null;                         // Liste des Services IA configurés
+        private static List<AIAction> aiMailerAIActions = new List<AIAction>();           // Liste des Modèles IA configurés
+        private static AIService aiMailerAIServiceActif = null;                           // Ajout pour mémoriser le service actif
+        private static AIModel aiMailerAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
+        private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
+        private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Redo
+        private readonly Timer aiMailerEditeurHitGroupTimer = new Timer();                // Timer de regroupement de Texte ppour le Undo
+        private bool aiMailerEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
+
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -684,6 +686,9 @@ namespace AIMailer
             // Ajout du Curseur de Sélection de la taille de la police
             InitialiserInterfaceEditeurCurseurFonte();
 
+            // 
+            InitialiserInterfaceHitGroupTimer();
+
         }
 
         /// **********************************************************************
@@ -693,12 +698,11 @@ namespace AIMailer
         {
             // Taille Textbox 
             this.Text = aiMailerName;
-            this.Size = new Size(
-                        textWidth + 2 * textXOffset + 20, 
-                        menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar
-);
+            this.Size = new Size(textWidth + 2 * textXOffset + 20, menuStripYOffset + textFontSliderHeight + textHeight + 2 * textYOffset + textYScrollbar);
 
-            // Zone de texte principale
+            // ************************************************
+            // 🔁 Zone de texte principale
+            // ************************************************
             aiMailerEditor = new TextBox
             {
                 Multiline = true,
@@ -764,19 +768,7 @@ namespace AIMailer
             contextMenu.MenuItems.Add(selectAllMenuItem);
 
             // Gestion du Undo pour l'écriture 
-            aiMailerEditor.KeyDown += (s, e) =>
-            {
-                if (e.Control && e.KeyCode == Keys.Y)
-                {
-                    EditorRedoLastChange();
-                    e.SuppressKeyPress = true;
-                }
-                else if (!e.Control && !e.Alt && e.KeyCode != Keys.ShiftKey)
-                {
-                    aiMailerUndoStack.Push(aiMailerEditor.Text);
-                    aiMailerRedoStack.Clear();
-                }
-            };
+            aiMailerEditor.KeyDown += aiMailerEditor_KeyDown;
 
             aiMailerEditor.ContextMenu = contextMenu;
             this.Controls.Add(aiMailerEditor);
@@ -787,6 +779,38 @@ namespace AIMailer
             aiMailerEditor.MouseDown += AiMailerEditor_MouseDown;
             aiMailerEditor.MouseUp += AiMailerEditor_MouseUp;
             aiMailerEditor.KeyUp += AiMailerEditor_KeyUp;
+        }
+
+        // Gestion des frappes clavier pour le Undo / Redo 
+        private void aiMailerEditor_KeyDown (object sender, KeyEventArgs e)
+        {
+            // Ctrl+Y → Redo
+            if (e.Control && e.KeyCode == Keys.Y)
+            {
+                EditorRedoLastChange();
+                e.SuppressKeyPress = true;
+            }
+            // Ctrl+Z → Undo
+            else if (e.Control && e.KeyCode == Keys.Z)
+            {
+                EditorUndoLastChange();
+                e.SuppressKeyPress = true;
+            }
+            // Gestion du regroupement des touches pour le Undo 
+            // Toute autre frappe (pas Ctrl, Alt ou Shift seul) → possible début ou poursuite d'un bloc d'Undo
+            else if (!e.Control && !e.Alt && e.KeyCode != Keys.ShiftKey)
+            {
+                // Si on n'est pas déjà dans un bloc, on en crée un (push initial)
+                if (!aiMailerEditeurHitGroupActive)
+                {
+                    aiMailerUndoStack.Push(aiMailerEditor.Text);
+                    aiMailerRedoStack.Clear();
+                    aiMailerEditeurHitGroupActive = true;
+                }
+                // On redémarre le timer pour prolonger le bloc
+                aiMailerEditeurHitGroupTimer.Stop();
+                aiMailerEditeurHitGroupTimer.Start();
+            }
         }
 
         // 🔁 AJOUT UNDO : méthode pour annuler la dernière modification IA
@@ -888,6 +912,17 @@ namespace AIMailer
             this.Controls.Add(fontSizeLabel);
         }
 
+        // Initialisation du Timer pour regroupelmt du texte entré (fonction Undo)
+        private void InitialiserInterfaceHitGroupTimer()
+        {
+            aiMailerEditeurHitGroupTimer.Interval = aiMailerEditeurHitGroupTimeMax; // Set timer
+            aiMailerEditeurHitGroupTimer.Tick += (s, e) =>
+            {
+                aiMailerEditeurHitGroupTimer.Stop();
+                aiMailerEditeurHitGroupActive = false;  // le prochain caractère redémarrera un nouveau groupe
+            };
+
+        }
         private void AiMailerEditor_KeyUp (object sender, EventArgs e)
         {
                OuvrirPaletteActions();   // affiche la palette
@@ -1017,9 +1052,16 @@ namespace AIMailer
             ToolStripMenuItem menuService = new ToolStripMenuItem(textFileMenuModeleLabel);
             if (aiMailerAIServices != null)
             {
+                bool firstService = true;
                 foreach (var service in aiMailerAIServices.Where(s => s.Models != null))
                 {
                     if (service.Models == null) continue;
+
+                    // Ajoute un séparateur avant chaque service sauf le premier
+                    if (!firstService)
+                        menuService.DropDownItems.Add(new ToolStripSeparator());
+                    firstService = false;
+
                     foreach (var model in service.Models)
                     {
                         var item = new ToolStripMenuItem($"{service.Name} | {model.Name}");
