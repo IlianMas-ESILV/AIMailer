@@ -759,7 +759,7 @@ namespace AIMailer
             {
                 aiMailerUndoStack.Push(aiMailerEditor.Text);
                 aiMailerRedoStack.Clear();
-                aiMailerEditor.Paste();
+                aiMailerEditor.Paste(); 
             };
             contextMenu.MenuItems.Add(pasteMenuItem);
             MenuItem selectAllMenuItem = new MenuItem(textEditorSelectionnerMenuLabel);
