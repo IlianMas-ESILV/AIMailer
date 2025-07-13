@@ -1,12 +1,9 @@
 Bonjour,
 
-J'espère que tu vas bien.
+Je suis heureux de vous informer que notre projet progresse bien et qu'il est maintenant appelé AIMailer. 
+Le développement avance régulièrement, et la mise en œuvre d'une POC pour transformer le projet en solution fiable et maintenable est actuellement en cours.
 
-Je t'écris cet email pour te le dire que notre projet progresse bien.
-
-Il est maintenant appelé AIMailer. Le développement avance régulièrement et l'industrialisation du POC pour en faire une solution fiable et maintenable est en bonne voie.
-
-En résumé, nous avons réalisé 80% du développement des fonctionnalités demandées, et les fonctionnalités supplémentaires sont en train d'être intégrées.
+Nous avons réalisé 80% du développement des fonctionnalités demandées, et les fonctionnalités supplémentaires sont en train d'être intégrées.
 
 Cordialement,
 L'équipe AIMailer
