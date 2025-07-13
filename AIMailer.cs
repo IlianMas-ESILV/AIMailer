@@ -1,18 +1,13 @@
-﻿using Microsoft.Office.Interop.Outlook;
-using stdole;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Drawing;
 //using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Media;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Net.Mail;
 using System.Runtime.InteropServices;
-using System.Speech.Recognition;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
@@ -20,8 +15,6 @@ using System.Text.RegularExpressions;
 //using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ListView;
-using static System.Windows.Forms.VisualStyles.VisualStyleElement.ProgressBar;
 using Font = System.Drawing.Font;
 using Outlook = Microsoft.Office.Interop.Outlook;   // Envoi d'emails à Outlook
 using SystemException = System.Exception;
@@ -111,33 +104,35 @@ namespace AIMailer
         private const int aiMailerPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
         private const int aiMailerErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
         private const int aiMailerDefaultTextFontSize = 11;         // Taille de police initiale
-        private const int aiMailerTextEditorLeftMargin = 10;                // Marge gauche Editeur
-        private const int aiMailerTextEditorRightMargin = 5;                // Marge droite Editeur
-        private const int aiMailerActionPanelXOffset = 0;                   // Déclalage X du panneau d'Actions
-        private const int aiMailerActionPanelYOffset = 10;                  // Déclalage Y du panneau d'Actions
+        private const int aiMailerTextEditorLeftMargin = 10;        // Marge gauche Editeur
+        private const int aiMailerTextEditorRightMargin = 5;        // Marge droite Editeur
+        private const int aiMailerActionPanelXOffset = 0;           // Déclalage X du panneau d'Actions
+        private const int aiMailerActionPanelYOffset = 10;          // Déclalage Y du panneau d'Actions
         private const int aiMailerEditeurHitGroupTimeMax = 500;     // Limite de temps (msec) pour le regroupement de texte (Undo)
-        private const int aiMailerDicteeButtonRigthMargin = 10;             // Marge droite Boutton Dictee
-        private const int aiMailerDicteeButtonBottomMargin = 10;            // Marge Bas Boutton Dictee
+        private const int aiMailerDicteeButtonRigthMargin = 10;     // Marge droite Boutton Dictee
+        private const int aiMailerDicteeButtonBottomMargin = 10;    // Marge Bas Boutton Dictee
+        private const int aiMailerRegexTimeoutMsec = 5000;          // Time-out Regex (préco sonarqube)
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
-        private const string aiMailerEditeurTextFontFamily = "Inter";                           // Police par défaut (ou "Segoe UI")
-        private const int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize;     // Taille de police Editeur initiale 
-        private const int aiMailerButtonTextFontSize = aiMailerDefaultTextFontSize - 1;         // Taille de police Boutons
-        private const int aiMailerEditeurMenuFontSize = aiMailerButtonTextFontSize;                     // Taille de police Menuq
-        private const int aiMailerEditeurTextFontSizeMin = 6, aiMailerEditeurTextFontSizeMax = 30;      // Tailles de police min & max Curseur de Polices
-        private const int aiMailerDicteeButtonFontSize = aiMailerButtonTextFontSize + 10;                 // Taille de police Texte Boutton Dictee
+        private const string aiMailerEditeurTextFontFamily = "Inter";                              // Police par défaut (ou "Segoe UI")
+        private const int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize;        // Taille de police Editeur initiale 
+        private const int aiMailerButtonTextFontSize = aiMailerDefaultTextFontSize - 1;            // Taille de police Boutons
+        private const int aiMailerEditeurMenuFontSize = aiMailerButtonTextFontSize;                // Taille de police Menuq
+        private const int aiMailerEditeurTextFontSizeMin = 6, aiMailerEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
+        private const int aiMailerDicteeButtonFontSize = aiMailerButtonTextFontSize + 10;          // Taille de police Texte Boutton Dictee
         // Tailles
-        private const int aiMailerEditeurTextWidth = 800, aiMailerEditeurTextHeight = 400;                            // Taille fenetre Editeur initiale
-        private const int textFontSliderWidth = 200, textFontSliderHeight = 40;         // Taille du Curseur de police
-        private const int textXOffset = 10, textYOffset = 10;
-        private const int textXScrollbar = 25, textYScrollbar = 40;                     // Taille Scrollbar Editeur
-        private const int aiMailerIAButtonIconSize = 32;                                          // Taille Icones des Boutons
-        private const int aiMailerButtonXOffset = 5, buttonYOffset = 5;                         // Decalage Boutons
-        private const int aiMailerButtonXSpace = 5, buttonYSpace = 5;                           // Espacement Boutons
-        private const int aiMailerButtonWidth = aiMailerIAButtonIconSize + 8, aiMailerButtonHeight = aiMailerButtonWidth;
+        private const int aiMailerEditeurTextWidth = 800, aiMailerEditeurTextHeight = 400;         // Taille fenetre Editeur initiale
+        private const int aiMailerTextFontSliderWidth = 200, aiMailerTextFontSliderHeight = 40;    // Taille du Curseur de police
+        private const int aiMailerTextXOffset = 10, aiMailerTextYOffset = 10;
+        private const int aiMailerTextXScrollbar = 25, aiMailerTextYScrollbar = 40;                // Taille Scrollbar Editeur
+        private const int aiMailerIAButtonIconSize = 32;                                           // Taille Icones des Boutons
+        private const int aiMailerButtonXOffset = 5, buttonYOffset = 5;                            // Decalage Boutons
+        private const int aiMailerButtonXSpace = 5, buttonYSpace = 5;                              // Boutons IA - Espacement 
+        private const int aiMailerButtonWidth = aiMailerIAButtonIconSize + 8;                      // Boutons IA - Largeur
+        private const int aiMailerButtonHeight = aiMailerButtonWidth;                              // Boutons IA - Hauteur
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
         // private static readonly Color buttonPanelBackColor = Color.Empty;
         // private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
@@ -168,7 +163,8 @@ namespace AIMailer
             { "ERROR_EDITOR_APPRESTART",       "Application impossible to restart !" },
             { "ERROR_EDITOR_IASERVICEUNKNOW",  "No AI service: AI Call impossible!" },
             { "ERROR_EDITOR_IAMODELUNKNOWN",   "Unknown AI model: AI call impossible!" },
-            { "ERROR_EDITOR_OUTLOOKNOTRUNNING","Please check that Outlook is running in order to send emails!" },
+            { "ERROR_EDITOR_REGEXTIMEOUT",     "Internal Error : Time-out on Regex call!" },
+            { "ERROR_EDITOR_OUTLOOKNOTRUNNING","Please launch Outlook in order to send emails!" },
             { "ERROR_EDITOR_OUTLOOKSENDDIRECT","Error while sending email : Please check that Outlook is running fine!" },
             { "ERROR_EDITOR_OUTLOOKSAVEDRAFT", "Error while saving draft email : Please check that Outlook is running fine!" }
         };
@@ -176,28 +172,26 @@ namespace AIMailer
         // *************************************************
         // ***** Variables "Globales" graphiques ***********
         // *************************************************
-        private static TextBox aiMailerEditor = null;                                     // Text Box Editeur
+        private TextBox aiMailerEditor = null;                                     // Text Box Editeur
         private static Form aiMailerPaletteActions = null;                                // Palette d'action 
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
         // *****************************************************
-        private static List<AIService> aiMailerAIServices = null;                         // Liste des Services IA configurés
-        private static List<AIAction> aiMailerAIActions = new List<AIAction>();           // Liste des Modèles IA configurés
+        private List<AIService> aiMailerAIServices = null;                         // Liste des Services IA configurés
+        private List<AIAction> aiMailerAIActions = null;                           // Liste des Modèles IA configurés
         private static AIService aiMailerAIServiceActif = null;                           // Ajout pour mémoriser le service actif
         private static AIModel aiMailerAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
         private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
         private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Redo
         private readonly Timer aiMailerEditeurHitGroupTimer = new Timer();                // Timer de regroupement de Texte ppour le Undo
         private bool aiMailerEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
-        private AiMailerVoiceDictation dictationInstance = null;
-        private bool isDictating = false;
-        private static string aiMailerEmailLastTo = aiMailerCourrielConfigLastTo;            // Email : dernier To
-        private static string aiMailerEmailLastCc = aiMailerCourrielConfigLastCc;            // Email : dernier Cc
-        private static string aiMailerEmailLastSubject = aiMailerCourrielConfigLastObject;   // Email : dernier Subject
-        private static bool  aiMailerEmailLastDraft    = aiMailerCourrielConfigLastDraft;    // Email : dernier Draft
-
-
+        private AiMailerVoiceDictation aiMailerDictationInstance = null;
+        private bool aiMailerIsDictating = false;
+        private string aiMailerEmailLastTo = aiMailerCourrielConfigLastTo;            // Email : dernier To
+        private string aiMailerEmailLastCc = aiMailerCourrielConfigLastCc;            // Email : dernier Cc
+        private string aiMailerEmailLastSubject = aiMailerCourrielConfigLastObject;   // Email : dernier Subject
+        private bool  aiMailerEmailLastDraft    = aiMailerCourrielConfigLastDraft;    // Email : dernier Draft
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -468,16 +462,19 @@ namespace AIMailer
             object returnedObject = null;
 
             // Enlever NewLine en doublons et tronquer "Texte Utilisateur" dans le message à afficher 
-            string userTextShort = Regex.Replace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
+            //string userTextShort = Regex.Replace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
+            string userTextShort = RegexSafeReplace(texteUtilisateur,@"(\r?\n){2,}",Environment.NewLine);
             userTextShort = userTextShort.Length > aiMailerPromptToShowLengthMax 
                             ? userTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc 
                             : userTextShort;
 
             // Enlever NewLine en doublons et tronquer "Full Action Prompt" dans le message à afficher 
-            string fullActionAndUserTextShort = Regex.Replace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
+            // Timeout
+            //string fullActionAndUserTextShort = Regex.Replace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
+            string fullActionAndUserTextShort = RegexSafeReplace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
             fullActionAndUserTextShort = fullActionAndUserTextShort.Length > aiMailerPromptToShowLengthMax
-                            ? fullActionAndUserTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
-                            : fullActionAndUserTextShort;
+                ? fullActionAndUserTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
+                : fullActionAndUserTextShort;
 
             // Build Prompt depending on Actif Model
             switch (mdl.Type)
@@ -616,7 +613,7 @@ namespace AIMailer
         private void LoadConfigurationFile()
         {
             string configFilePath = Path.Combine(WinForms.Application.StartupPath, aiMailerConfigFile);
-            aiMailerAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
+            //aiMailerAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
 
             // Erreur Fichier absent ou non accessible (droits)
             if (!File.Exists(configFilePath))
@@ -743,7 +740,9 @@ namespace AIMailer
         {
             // Taille Textbox 
             this.Text = aiMailerName;
-            this.Size = new Size(aiMailerEditeurTextWidth + 2 * textXOffset + 20, menuStripYOffset + textFontSliderHeight + aiMailerEditeurTextHeight + 2 * textYOffset + textYScrollbar);
+            this.Size = new Size(aiMailerEditeurTextWidth + 2 * aiMailerTextXOffset + 20, 
+                                menuStripYOffset + aiMailerTextFontSliderHeight + aiMailerEditeurTextHeight 
+                                + 2 * aiMailerTextYOffset + aiMailerTextYScrollbar);
 
             // ************************************************
             // 🔁 Zone de texte principale
@@ -754,7 +753,7 @@ namespace AIMailer
                 Name = aiMailerEditorName,
                 Size = new Size(aiMailerEditeurTextWidth, aiMailerEditeurTextHeight),
                 Font = new Font(this.Font.FontFamily, aiMailerEditeurDefaultTextFontSize),
-                Location = new Point(textXOffset, menuStripYOffset + textYOffset),
+                Location = new Point(aiMailerTextXOffset, menuStripYOffset + aiMailerTextYOffset),
                 ScrollBars = ScrollBars.Vertical,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
@@ -927,8 +926,8 @@ namespace AIMailer
                 SmallChange = 1,
                 LargeChange = 2,
                 Orientation = Orientation.Horizontal,
-                Location = new Point(textXOffset, aiMailerEditor.Bottom + 10),
-                Width = textFontSliderWidth,
+                Location = new Point(aiMailerTextXOffset, aiMailerEditor.Bottom + 10),
+                Width = aiMailerTextFontSliderWidth,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
             };
 
@@ -985,7 +984,7 @@ namespace AIMailer
             btnDictee.Top = this.ClientSize.Height - btnDictee.Height - aiMailerDicteeButtonBottomMargin +5;
 
 
-            btnDictee.Click += (s, e) => DemarrerDictee((Button)s);
+            btnDictee.Click += (s, e) => EditeurDemarrerDictee((Button)s);
             this.Controls.Add(btnDictee);
 
             ///
@@ -1240,7 +1239,7 @@ namespace AIMailer
                 Font = new Font(this.Font.FontFamily, aiMailerEditeurMenuFontSize - 1),
                 ForeColor = aiMailerEditeurMenuForeColor,
                 Alignment = ToolStripItemAlignment.Right,
-                Margin = new Padding(0, 0, textXOffset, 0)
+                Margin = new Padding(0, 0, aiMailerTextXOffset, 0)
             };
             menuStrip.Items.Add(labelServiceModel);
 
@@ -1389,13 +1388,13 @@ namespace AIMailer
         }
 
         /// Gestion de la Dictée Vocale
-        private void DemarrerDictee(Button sourceButton = null)
+        private void EditeurDemarrerDictee(Button sourceButton = null)
         {
 
-            if (isDictating)
-            { // 9999
-                dictationInstance?.Stop();
-                isDictating = false;
+            if (aiMailerIsDictating)
+            {
+                aiMailerDictationInstance?.Stop();
+                aiMailerIsDictating = false;
                 if (sourceButton != null)
                 {
                     var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOffIcon),
@@ -1406,7 +1405,7 @@ namespace AIMailer
                 return;
             }
 
-            dictationInstance = new AiMailerVoiceDictation(texteReconnu =>
+            aiMailerDictationInstance = new AiMailerVoiceDictation(texteReconnu =>
             {
                 this.Invoke((MethodInvoker)(() =>
                 {
@@ -1419,8 +1418,8 @@ namespace AIMailer
                 }));
             });
 
-            dictationInstance.Start();
-            isDictating = true;
+            aiMailerDictationInstance.Start();
+            aiMailerIsDictating = true;
             if (sourceButton != null)
             { 
                 var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOnIcon),
@@ -1871,7 +1870,7 @@ namespace AIMailer
         /// Envoi d'email via Outlook
         /// </summary>
         
-        public class AiMailerEmailSender
+        public static class AiMailerEmailSender
         {
             /// Envoi d'email via Outlook : Enregistrement comme Brouillon
             public static void SendToOutookAsDraft(string to, string subject, string body)
@@ -1948,6 +1947,24 @@ namespace AIMailer
                     ErrorShow("ERROR_EDITOR_OUTLOOKSENDDIRECT", ex.Message);
                     return;
                 }
+            }
+        }
+
+        /// <summary>
+        /// Remplacement Regex avec timeout maximal
+        /// </summary>
+
+        private static string RegexSafeReplace(string input, string pattern, string replacement, int timeoutMs = aiMailerRegexTimeoutMsec)
+        { 
+            try
+            {
+                var regex = new Regex(pattern, RegexOptions.None, TimeSpan.FromMilliseconds(timeoutMs));
+                return regex.Replace(input, replacement);
+            }
+            catch (RegexMatchTimeoutException ex)
+            {
+                ErrorShow("ERROR_EDITOR_REGEXTIMEOUT", ex.Message, pattern, input, replacement);
+                return input;
             }
         }
 
@@ -2033,7 +2050,7 @@ namespace AIMailer
             SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
         }
 
-        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        [DllImport(aiMailerUser32dll, CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(
             IntPtr hWnd,
             int msg,
