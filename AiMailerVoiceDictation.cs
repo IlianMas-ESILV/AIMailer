@@ -20,7 +20,7 @@ namespace AIMailer
 
             recognizer.SpeechRecognized += (s, e) =>
             {
-                if (e.Result != null && ! string.IsNullOrWhiteSpace(e.Result.Text) && e.Result.Confidence > 0.6) // ajustable
+                if (e.Result != null && ! string.IsNullOrWhiteSpace(e.Result.Text) && e.Result.Confidence > AIMailer.aiMailerDictationConfidence) // ajustable
                 {
                     callback(e.Result.Text); // texte dicté envoyé à l’éditeur
                 }

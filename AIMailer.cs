@@ -112,13 +112,13 @@ namespace AIMailer
         private const int aiMailerDicteeButtonRigthMargin = 10;     // Marge droite Boutton Dictee
         private const int aiMailerDicteeButtonBottomMargin = 10;    // Marge Bas Boutton Dictee
         private const int aiMailerRegexTimeoutMsec = 5000;          // Time-out Regex (préco sonarqube)
+        private const float aiMailerDictationDefaultConfidence = (float)0.6; // Defautl Dictation Confidence
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
         private const string aiMailerEditeurTextFontFamily = "Inter";                              // Police par défaut (ou "Segoe UI")
-        private const int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize;        // Taille de police Editeur initiale 
         private const int aiMailerButtonTextFontSize = aiMailerDefaultTextFontSize - 1;            // Taille de police Boutons
         private const int aiMailerEditeurMenuFontSize = aiMailerButtonTextFontSize;                // Taille de police Menuq
         private const int aiMailerEditeurTextFontSizeMin = 6, aiMailerEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
@@ -180,6 +180,7 @@ namespace AIMailer
         // *****************************************************
         private List<AIService> aiMailerAIServices = null;                         // Liste des Services IA configurés
         private List<AIAction> aiMailerAIActions = null;                           // Liste des Modèles IA configurés
+        private AppConfiguration aiMailerAppConfiguration = null;                  // Configuraiton interne
         private static AIService aiMailerAIServiceActif = null;                           // Ajout pour mémoriser le service actif
         private static AIModel aiMailerAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
         private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
@@ -188,6 +189,8 @@ namespace AIMailer
         private bool aiMailerEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
         private AiMailerVoiceDictation aiMailerDictationInstance = null;
         private bool aiMailerIsDictating = false;
+        public static float aiMailerDictationConfidence = aiMailerDictationDefaultConfidence;
+        private int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize; // Taille de police Editeur initiale 
         private string aiMailerEmailLastTo = aiMailerCourrielConfigLastTo;            // Email : dernier To
         private string aiMailerEmailLastCc = aiMailerCourrielConfigLastCc;            // Email : dernier Cc
         private string aiMailerEmailLastSubject = aiMailerCourrielConfigLastObject;   // Email : dernier Subject
@@ -206,7 +209,8 @@ namespace AIMailer
 
         ///// **********************************************************************
         ///// **********************************************************************
-        ///// *****   Description des Services & Actions d'IA **********************
+        ///// *****   Description des Services & Actions d'IA (Fichier de Config) **
+        ///// *****   et configuration interne *************************************
         ///// **********************************************************************
         ///// **********************************************************************
 
@@ -260,6 +264,26 @@ namespace AIMailer
             public string ModelId { get; set; }
         }
 
+        // Configuration interne Application
+        private class AppConfiguration
+        {
+            public EmailConfiguration Email { get; set; }
+            public EditorConfiguration Editor { get; set; }
+        }
+        private class EmailConfiguration
+        {
+            public string LastTo { get; set; }
+            public string LastCc { get; set; }
+            public string LastSubject { get; set; }
+            public bool LastDraft { get; set; }
+        }
+
+        private class EditorConfiguration
+        {
+            public int TextFontSize { get; set; }
+            public float DictationConfidence { get; set; }
+        }
+        // aiMailerEditeurDefaultTextFontSize
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Appel à l'IA à partir des boutons ****************************
@@ -636,6 +660,21 @@ namespace AIMailer
                 aiMailerAIActions = config.Actions ?? new List<AIAction>();
                 aiMailerAIServices = config.Services ?? new List<AIService>();
 
+                // Parsing de la configuration interne
+                aiMailerAppConfiguration = config.Configuration ?? new AppConfiguration();
+                EmailConfiguration emailCfg = aiMailerAppConfiguration.Email;
+                aiMailerEmailLastTo = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastTo)) ? aiMailerCourrielConfigLastTo : emailCfg.LastTo;
+                aiMailerEmailLastCc = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastCc)) ? aiMailerCourrielConfigLastCc : emailCfg.LastCc;
+                aiMailerEmailLastSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastSubject)) ? aiMailerCourrielConfigLastObject : emailCfg.LastSubject;
+                aiMailerEmailLastDraft = emailCfg.LastDraft;
+
+                EditorConfiguration editorCfg = aiMailerAppConfiguration.Editor; 
+                aiMailerEditeurDefaultTextFontSize = (editorCfg == null) 
+                                                    || (editorCfg.TextFontSize < aiMailerEditeurTextFontSizeMin) 
+                                                    || (editorCfg.TextFontSize > aiMailerEditeurTextFontSizeMax) ? aiMailerDefaultTextFontSize : editorCfg.TextFontSize;
+                aiMailerDictationConfidence = (editorCfg == null) ? aiMailerDictationDefaultConfidence : editorCfg.DictationConfidence;
+
+
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
                 aiMailerAIModeleActif = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
                    ?? aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
@@ -653,9 +692,10 @@ namespace AIMailer
         // Structure de Parsing du fichier de configuration
         private class AIMailerConfigurationFile
         {
-            public List<AIAction> Actions { get; set; }     // AI Actions
-            public List<AIService> Services { get; set; }   // AI Services 
-                                                            //            public List<AIModel> Models { get; set; }       // AI Modèle
+            public List<AIAction> Actions { get; set; }          // AI Actions
+            public List<AIService> Services { get; set; }        // AI Services 
+            public AppConfiguration Configuration { get; set; }  // Configuration interne
+
         }
 
         /// <summary>
@@ -668,9 +708,8 @@ namespace AIMailer
             var config = new AIMailerConfigurationFile
             {
                 Actions = aiMailerAIActions,
-                Services = aiMailerAIServices   // déjà null-safe
-                // Si vous aviez aussi la propriété Models à la racine,
-                // ajoutez-la ici le cas échéant (par exemple pour un cache global).
+                Services = aiMailerAIServices,   
+                Configuration = aiMailerAppConfiguration
             };
 
             // 2. Options de sérialisation
