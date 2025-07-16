@@ -1,12 +1,20 @@
-﻿/****
-*****
-*****   IAssistant Solution 
-*****   
-***** 
-*****-- Author --------------------------------------------------------------------------------
-*****   (c) Ilian Mas / A1 ESILV / June 2025
-*****------------------------------------------------------------------------------------------ 
-*****/
+﻿/******* -----------------------------------------------------------------------------------------
+ * *****    IAssistant      Intelligence Artificial-powered Office Assistant
+ * ***** -----------------------------------------------------------------------------------------
+ * *****   
+ * *****    IAssistant.cs   Main source file - Editor windows
+ * *****
+ * *****
+ * ***** -- Author --------------------------------------------------------------------------------
+ * *****
+ * ***** -- (c) Ilian Mas (ESILV A1) / June 2025
+ * *****
+ * ***** -- Major Changes -------------------------------------------------------------------------
+ * *****    16/07/25 - Ilian Mas - Renammed to IAssistant
+ * *****    26/05/25 - Ilian Mas - Initial version
+ * ***** - ---------------------------------------------------------------------------------------
+ ******/
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -169,6 +177,7 @@ namespace IAssistant
             { "ERROR_EDITOR_IASERVICEUNKNOW",   "No AI service: AI Call impossible!" },
             { "ERROR_EDITOR_IAMODELUNKNOWN",    "Unknown AI model: AI call impossible!" },
             { "ERROR_EDITOR_REGEXTIMEOUT",      "Internal Error : Time-out on Regex call!" },
+            { "ERROR_EDITOR_DICTATIONNOSTART",  "Error while trying to start vocal dictation!" },
             { "ERROR_EDITOR_OUTLOOKNOTRUNNING", "Please launch Outlook in order to allow interactions!" },
             { "ERROR_EDITOR_OUTLOOKSENDDIRECT", "Error while sending email : Please check that Outlook is running fine!" },
             { "ERROR_EDITOR_OUTLOOKSAVEDRAFT",  "Error while saving draft email : Please check that Outlook is running fine!" }
@@ -307,7 +316,7 @@ namespace IAssistant
             public string Text { get; set; }
         }
 
-        private async Task AIMAilerAIMethod(AIAction action)
+        private async Task IAssistantAIMethod(AIAction action)
         {
             // 1) Lookup dynamique ou valeurs globales si override "Default"
             var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? iAssistantAIServiceActif : GetServiceFor(action);
@@ -335,7 +344,7 @@ namespace IAssistant
             }
 
             // 3) Construction du corps JSON (on passe svc et mdl)
-            var (iaRequestBody, promptToShow) = AIMAilerAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
+            var (iaRequestBody, promptToShow) = IAssistantAIModelPrompt(action, texteUtilisateur, svcLocal, mdlLocal);
             if (iaRequestBody == null) return;
 
             var iaRequestBodyJson = new StringContent(
@@ -440,7 +449,12 @@ namespace IAssistant
 
                     // Appel asychrone au Modèle dans LM Studio
                     var response = await client.PostAsync(mdlLocal.Url, iaRequestBodyJson);
-                    response.EnsureSuccessStatusCode();
+                    if (!response.IsSuccessStatusCode)
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        ErrorShow("ERROR_EDITOR_IACALL", $"HTTP {(int)response.StatusCode} - {response.ReasonPhrase}");
+                        return;
+                    }
 
                     // Deserialisation de la reponse de l'ia
                     var responseJson = await response.Content.ReadAsStringAsync();
@@ -457,7 +471,7 @@ namespace IAssistant
                                  .GetProperty("text")
                                  .GetString();
 
-                        AIMAilerAIReplyReplace(result?.Replace("\n", Environment.NewLine));
+                        IAssistantAIReplyReplace(result?.Replace("\n", Environment.NewLine));
                     }
                 }
                 catch (SystemException ex)
@@ -479,7 +493,7 @@ namespace IAssistant
         /// *************************************************************************
         /// ***** Construction du Prompt à envoyer à l'IA selon le Modèle actif *****
         /// *************************************************************************
-        private (object Body, string Prompt) AIMAilerAIModelPrompt(AIAction action, string texteUtilisateur, AIService svc, AIModel mdl)
+        private (object Body, string Prompt) IAssistantAIModelPrompt(AIAction action, string texteUtilisateur, AIService svc, AIModel mdl)
         {
             // Temperature with model ratio
             decimal calcTemp = action.Temperature * (mdl.TemperatureRatio > 0 ? mdl.TemperatureRatio : 1);
@@ -592,7 +606,7 @@ namespace IAssistant
         /// **********************************************************************
         /// ***** Prise en compte de la réponse de l'IA dans l'Editeur ***********
         /// **********************************************************************
-        private void AIMAilerAIReplyReplace(string aiReponseTexte)
+        private void IAssistantAIReplyReplace(string aiReponseTexte)
         {
             // 🔁 UNDO/REDO : sauvegarde l'état actuel, vide le redo
             iAssistantUndoStack.Push(iAssistantEditor.Text);
@@ -1036,7 +1050,7 @@ namespace IAssistant
             btnDictee.Top = this.ClientSize.Height - btnDictee.Height - iAssistantFctButtonBottomMargin + 5;
 
 
-            btnDictee.Click += (s, e) => EditeurDemarrerDictee((Button)s);
+            btnDictee.Click += (s, e) => EditeurDemarrerOuArreterDictee((Button)s);
             this.Controls.Add(btnDictee);
             hoverTip.SetToolTip(btnDictee, iAssistantDicteeStartButtonTip);
 
@@ -1067,7 +1081,7 @@ namespace IAssistant
             btnEnvoyer.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
                 var contenu = iAssistantEditor.Text;
-                OpenOutlookEmail(contenu);
+                IAssistantOutlook.OpenEmail(contenu,iAssistantEmailLastSubject);
             };
             this.Controls.Add(btnEnvoyer);
             hoverTip.SetToolTip(btnEnvoyer, iAssistantCourrielConfigTitle);
@@ -1380,7 +1394,7 @@ namespace IAssistant
         }
 
         /// Gestion de la Dictée Vocale
-        private void EditeurDemarrerDictee(Button sourceButton = null)
+        private void EditeurDemarrerOuArreterDictee(Button sourceButton = null)
         {
 
             if (iAssistantIsDictating)
@@ -1432,7 +1446,7 @@ namespace IAssistant
         /// *******************************************************
         /// ***** Fonction générique d'affichage des erreurs ******
         /// *******************************************************
-        private static void ErrorShow(string msgKey, string errorLevel1 = "", string errorLevel2 = "", string errorLevel3 = "", string errorLevel4 = "")
+        public static void ErrorShow(string msgKey, string errorLevel1 = "", string errorLevel2 = "", string errorLevel3 = "", string errorLevel4 = "")
         {
             string msgLabel;
 
@@ -1792,7 +1806,7 @@ namespace IAssistant
                 };
 
                 // Action du bouton : Apple de l'IA
-                btn.Click += async (s, _) => await AIMAilerAIMethod((AIAction)((Button)s).Tag);
+                btn.Click += async (s, _) => await IAssistantAIMethod((AIAction)((Button)s).Tag);
 
                 // menu contextuel « Configuration »
                 ContextMenu ctx = new ContextMenu();

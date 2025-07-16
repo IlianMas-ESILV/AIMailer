@@ -1,4 +1,20 @@
-﻿using System;
+﻿/******* -----------------------------------------------------------------------------------------
+ * *****    IAssistant      Intelligence Artificial-powered Office Assistant
+ * ***** -----------------------------------------------------------------------------------------
+ * *****
+ * *****    IAssistantVoiceDictation.cs   Vocal Dictation
+ * *****
+ * *****
+ * ***** -- Author --------------------------------------------------------------------------------
+ * *****
+ * *****    (c) Ilian Mas (ESILV A1) / June 2025
+ * *****
+ * ***** -- Major Changes -------------------------------------------------------------------------
+ * *****    10/07/25 - Ilian Mas - Initial version
+ * ***** - ---------------------------------------------------------------------------------------
+ ******/
+
+using System;
 using System.Speech.Recognition;
 using System.Windows.Forms;
 
@@ -37,7 +53,7 @@ namespace IAssistant
             }
             catch (Exception ex)
             {
-                MessageBox.Show("Erreur de démarrage de la dictée : " + ex.Message);
+                IAssistant.ErrorShow("ERROR_EDITOR_DICTATIONNOSTART", ex.Message);
             }
         }
 

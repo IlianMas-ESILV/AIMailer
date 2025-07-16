@@ -94,6 +94,7 @@
       <DependentUpon>IAssistant.cs</DependentUpon>
     </Compile>
     <Compile Include="IAssistantMain.cs" />
+    <Compile Include="IAssistantOutlook.cs" />
     <Compile Include="IAssistantVoiceDictation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <EmbeddedResource Include="IAssistant.resx">
