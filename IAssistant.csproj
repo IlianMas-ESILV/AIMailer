@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{7CEFA6D8-07F5-45BF-A2AC-5F37549A1C4F}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>AIMailer</RootNamespace>
-    <AssemblyName>AIMailer</AssemblyName>
+    <RootNamespace>IAssistant</RootNamespace>
+    <AssemblyName>IAssistant</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -35,7 +35,7 @@
     <UseWinFormsOutOfProcDesigner>True</UseWinFormsOutOfProcDesigner>
   </PropertyGroup>
   <PropertyGroup>
-    <ApplicationIcon>Resources\AIMailer.ico</ApplicationIcon>
+    <ApplicationIcon>IAssistant.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="Microsoft.Bcl.AsyncInterfaces, Version=9.0.0.5, Culture=neutral, PublicKeyToken=cc7b13ffcd2ddd51, processorArchitecture=MSIL">
@@ -87,17 +87,17 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AIMailer.cs">
+    <Compile Include="IAssistant.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="AIMailer.Designer.cs">
-      <DependentUpon>AIMailer.cs</DependentUpon>
+    <Compile Include="IAssistant.Designer.cs">
+      <DependentUpon>IAssistant.cs</DependentUpon>
     </Compile>
-    <Compile Include="AIMailerMain.cs" />
-    <Compile Include="AiMailerVoiceDictation.cs" />
+    <Compile Include="IAssistantMain.cs" />
+    <Compile Include="IAssistantVoiceDictation.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <EmbeddedResource Include="AIMailer.resx">
-      <DependentUpon>AIMailer.cs</DependentUpon>
+    <EmbeddedResource Include="IAssistant.resx">
+      <DependentUpon>IAssistant.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -119,23 +119,18 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
-    <None Include="Resources\AIMailer.cfg" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="AIMailer.autosave.txt" />
-    <Content Include="Resources\AIMailer - Jeu d%27Essai - Anglais.txt" />
-    <Content Include="Resources\AIMailer - Jeu d%27Essai - Francais.txt" />
-    <Content Include="Resources\AIMailer.autosave.txt" />
-    <Content Include="Resources\AIMailer.ico" />
+    <Content Include="IAssistant.ico" />
+    <Content Include="Resources\IAssistant- Jeu d%27Essai - Anglais.txt" />
+    <Content Include="Resources\IAssistant - Jeu d%27Essai - Francais.txt" />
+    <Content Include="Resources\IAssistant.autosave.txt" />
     <Content Include="Resources\Appointment32.ico" />
     <Content Include="Resources\Brainstorm32.ico" />
     <Content Include="Resources\Elaborate32.ico" />
-    <Content Include="Resources\RecordOff64.png" />
-    <Content Include="Resources\RecordOn64.png" />
-    <Content Include="Resources\SendEmail.png" />
     <Content Include="Resources\Style32.ico" />
     <Content Include="Resources\Sumup32.ico" />
     <Content Include="Resources\Translate32.ico" />

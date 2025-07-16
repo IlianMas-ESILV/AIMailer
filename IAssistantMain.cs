@@ -4,9 +4,9 @@ using System.Linq;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
-namespace AIMailer
+namespace IAssistant
 {
-    static class AIMailerMain
+    static class IAssistantMain
     {
         /// <summary>
         /// Point d'entrée principal de l'application.
@@ -16,7 +16,7 @@ namespace AIMailer
         {
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-            Application.Run(new AIMailer());
+            Application.Run(new IAssistant());
         }
     }
 }

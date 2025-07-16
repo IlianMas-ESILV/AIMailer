@@ -2,14 +2,14 @@
 using System.Speech.Recognition;
 using System.Windows.Forms;
 
-namespace AIMailer
+namespace IAssistant
 {
-    public class AIMailerVoiceDictation
+    public class IAssistantVoiceDictation
     {
         private SpeechRecognitionEngine recognizer;
         private Action<string> callback;
 
-        public AIMailerVoiceDictation(Action<string> callback)
+        public IAssistantVoiceDictation(Action<string> callback)
         {
             this.callback = callback;
             recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("fr-FR"));
@@ -20,7 +20,7 @@ namespace AIMailer
 
             recognizer.SpeechRecognized += (s, e) =>
             {
-                if (e.Result != null && ! string.IsNullOrWhiteSpace(e.Result.Text) && e.Result.Confidence > AIMailer.aiMailerDictationConfidence) // ajustable
+                if (e.Result != null && ! string.IsNullOrWhiteSpace(e.Result.Text) && e.Result.Confidence > IAssistant.iAssistantDictationConfidence) // ajustable
                 {
                     callback(e.Result.Text); // texte dicté envoyé à l’éditeur
                 }

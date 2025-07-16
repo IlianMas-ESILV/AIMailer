@@ -1,7 +1,15 @@
-﻿using System;
+﻿/****
+*****
+*****   IAssistant Solution 
+*****   
+***** 
+*****-- Author --------------------------------------------------------------------------------
+*****   (c) Ilian Mas / A1 ESILV / June 2025
+*****------------------------------------------------------------------------------------------ 
+*****/
+using System;
 using System.Collections.Generic;
 using System.Drawing;
-//using System.Drawing.Text;
 using System.IO;
 using System.Linq;
 using System.Media;
@@ -12,13 +20,9 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
-//using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Font = System.Drawing.Font;
 using Outlook = Microsoft.Office.Interop.Outlook;   // Envoi d'emails à Outlook
-using SystemException = System.Exception;
-using Timer = System.Windows.Forms.Timer;           // Alias explicite Timer (regroupement de cars undo/redo)
 using WinForms = System.Windows.Forms;
 
 /* Context Prompt pour mémo 
@@ -28,185 +32,179 @@ Adapte ta réponse au style du texte original si c’est un extrait, et respecte
 ne commente jamais les instructions, ne cite pas le texte source, et reste concis si le contexte le demande.
 */
 
-namespace AIMailer
+namespace IAssistant
 {
-    public partial class AIMailer : WinForms.Form
+    public partial class IAssistant : WinForms.Form
     {
         // ***********************************************
         // ***** Noms et chaines de caractères ***********
         // ***********************************************
-        private const string aiMailerConfigFile = "AIMailer.cfg";
-        private const string aiMailerAutoSaveFile = "AIMailer.AutoSave.txt"; // 💾 AUTOSAVE : fichier de sauvegarde auto
-        private const string aiMailerNotepadExe = "notepad.exe";
-        private const string aiMailerUser32dll = "user32.dll";
-        private const string aiMailerName = "AIMailer";
-        private const string aiMailerEditorName = "aiMailerEditor";
-        private const string aiMailerPaletteActionsTitle = "AI Actions";
-        private const string aiMailerErrorShowTitle = "Error " + aiMailerName;
-        private const string aiMailerTextFileMenuTextOpenLabel = "Open file";
-        private const string aiMailerTextFileMenuTextSaveLabel = "Save file to...";
-        private const string aiMailerTextFileMenuConfigEditLabel = "Edit configuration";
-        private const string aiMailerTextFileMenuRestartLabel = "Apply configuration...";
-        private const string aiMailerTextEditorActionsIAMenuLabel = aiMailerPaletteActionsTitle + "...";
-        private const string aiMailerTextEditorAnnulerMenuLabel = "Undo (Ctrl-Z)";
-        private const string aiMailerTextEditorRefaireMenuLabel = "Redo (Ctrl-Y)";
-        private const string aiMailerTextEditorEffacerMenuLabel = "Erase";
-        private const string aiMailerTextEditorCouperMenuLabel = "Cut (Ctrl+X)";
-        private const string aiMailerTextEditorCopierMenuLabel = "Copy (Ctrl+C)";
-        private const string aiMailerTextEditorCollerMenuLabel = "Paste (Ctrl+V)";
-        private const string aiMailerTextEditorSelectionnerMenuLabel = "Select All (Ctrl+A)";
-        private const string aiMailerTextFontSliderLabel = "Font : ";
-        private const string aiMailerTextFontSliderTip = "Change Editor Text Size";      // Hovertip Clider Font Size
-        private const string aiMailerTextFileMenuTextLabel = "Text";
-        private const string aiMailerConfigMenuTextLabel = "Configuration";
-        private const string aiMailerTextFileMenuModeleLabel = "Models";
-        private const string aiMailerTextFileMenuFilter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
-        private const string aiMailerOkButtonText = "Ok";
-        private const string aiMailerCancelButtonText = "Cancel";
-        private const string aiMailerIACallTitle = "AI Call pending…";
-        private const string aiMailerRestartWarningTitle = "Restart confirmation";
-        private const string aiMailerRestartAutoSaveWarning = "The current text can not be saved.\nDo you want to restart ?";
-        private const string aiMailerServiceAbsent = "Unknown Service";         // Service AI absent
-        private const string aiMailerModeleAbsent = "Unknown Model";            // Modèle AI absent
-        private const string aiMailerStringMaskServiceAndModel = "{0} | {1} | {2}";     // Masque d'affichage du Service, Modèle, et Type de Modèle
-        private const string aiMailerStringMaskCompletionPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[Temperature] {3}\n\n[max_tokens] {4}\n\n";
-        private const string aiMailerStringMaskChatPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[Temperature] {4}\n\n[max_tokens] {5}\n\n";
-        private const string aiMailerStringMaskChatPopupPromptNA = "N/A";
-        private const string aiMailerTripleClicSentenceCars = ".?!\n";           // Ponctuation de début de phrase
-        private const string aiMailerAICallMsgBoxTitle = "AI Call...";           // Timer Msg Box Titre        
-        private const string aiMailerActionPanelButtonCfgMenuLabel = "⚙ Edit";  // Label Menu Configuraiton Bouton IA
-        private const string aiMailerActionCfgTitle = "Configuration: ";
-        private const string aiMailerActionCfgName = "Name:";
-        private const string aiMailerActionCfgPrompt = "Prompt:";
-        private const string aiMailerActionCfgTemperature = "Temperature:";
-        private const string aiMailerActionCfgSvcModel = "Service / Model:";
-        private const string aiMailerActionCfgModelDefault = "<Default model>";
-        private const string aiMailerErrorLevelLabel = "[Level {0}] ";
-        private const string aiMailerStringMsgTrunc = "...";
-        private const int aiMailerFctButtonIconSize = 32;
-        private const string aiMailerDicteeButtonOffIcon = "RecordOff32.ico";          // Icon Bouton Dictee à l'arret
-        private const string aiMailerDicteeButtonText = "🎤";                          // Label Bouton Dictee à l'arret
-        private const string aiMailerDicteeButtonOnIcon = "RecordOn32.ico";            // Icon Bouton Dictee à l'enregistrement
-        private const string aiMailerDicteeButtonRecordText = "⏹";                    // Label Bouton Dictee à l'enregistrement
-        private const string aiMailerRdvButtonIcon = "Rendezvous32.ico";               // Icon Bouton Envoi Rdv    
-        private const string aiMailerRdvButtonText = "📅";                            // Label Bouton Envoi Rdv 
-        private const string aiMailerCourrielButtonIcon = "SendEmail32.ico";           // Label Bouton Envoi email
-        private const string aiMailerCourrielButtonText = "📨";                        // Label Bouton Envoi email
-        private const string aiMailerCourrielConfigTitle = "Open Outlook Email"; // Label Configuration Email - Titre
-        private const string aiMailerCourrielConfigTo = "To:";                         // Label Configuration Email - To
-        private const string aiMailerCourrielConfigCc = "CC:";                         // Label Configuration Email - CC
-        private const string aiMailerCourrielConfigObject = "Object:";                 // Label Configuration Email - Object
-        private const string aiMailerCourrielConfigDraft = "Send as Draft";            // Label Configuration Email - Draft
-        private const string aiMailerCourrielConfigLastTo = "@edu.devinci.fr";         // Label Configuration Email - To
-        private const string aiMailerCourrielConfigLastCc = "";                        // Label Configuration Email - CC
-        private const string aiMailerCourrielConfigLastObject = "AIMailer";            // Label Configuration Email - Object
-        private const bool aiMailerCourrielConfigLastDraft = true;                     // Label Configuration Email - Draft
-        private const string aiMailerDicteeStartButtonTip = "Start Vocal dictation";    // Tip boutton Dictee vocale
-        private const string aiMailerDicteeStopButtonTip = "Stop Vocal dictation";      // Tip boutton Dictee vocale
-        private const string aiMailerRdvButtonTip = "Open Outlook Meeting";   // Tip boutton Envoi Rdv 
+        private const string iAssistantConfigFile = "IAssistant.cfg";
+        private const string iAssistantAutoSaveFile = "IAssistant.AutoSave.txt"; // 💾 AUTOSAVE : fichier de sauvegarde auto
+        private const string iAssistantNotepadExe = "notepad.exe";
+        private const string iAssistantUser32dll = "user32.dll";
+        private const string iAssistantName = "IAssistant";
+        private const string iAssistantEditorName = "IAssistantEditor";
+        private const string iAssistantPaletteActionsTitle = "AI Assistance";
+        private const string iAssistantErrorShowTitle = "Error " + iAssistantName;
+        private const string iAssistantTextFileMenuTextOpenLabel = "Open file";
+        private const string iAssistantTextFileMenuTextSaveLabel = "Save file to...";
+        private const string iAssistantTextFileMenuConfigEditLabel = "Edit configuration";
+        private const string iAssistantTextFileMenuRestartLabel = "Apply configuration...";
+        private const string iAssistantTextEditorActionsIAMenuLabel = iAssistantPaletteActionsTitle + "...";
+        private const string iAssistantTextEditorAnnulerMenuLabel = "Undo (Ctrl-Z)";
+        private const string iAssistantTextEditorRefaireMenuLabel = "Redo (Ctrl-Y)";
+        private const string iAssistantTextEditorEffacerMenuLabel = "Erase";
+        private const string iAssistantTextEditorCouperMenuLabel = "Cut (Ctrl+X)";
+        private const string iAssistantTextEditorCopierMenuLabel = "Copy (Ctrl+C)";
+        private const string iAssistantTextEditorCollerMenuLabel = "Paste (Ctrl+V)";
+        private const string iAssistantTextEditorSelectionnerMenuLabel = "Select All (Ctrl+A)";
+        private const string iAssistantTextFontSliderLabel = "Font : ";
+        private const string iAssistantTextFontSliderTip = "Change Editor Text Size";      // Hovertip Clider Font Size
+        private const string iAssistantTextFileMenuTextLabel = "Text";
+        private const string iAssistantConfigMenuTextLabel = "Configuration";
+        private const string iAssistantTextFileMenuModeleLabel = "Models";
+        private const string iAssistantTextFileMenuFilter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";
+        private const string iAssistantOkButtonText = "Ok";
+        private const string iAssistantCancelButtonText = "Cancel";
+        private const string iAssistantIACallTitle = "AI Call pending…";
+        private const string iAssistantRestartWarningTitle = "Restart confirmation";
+        private const string iAssistantRestartAutoSaveWarning = "The current text can not be saved.\nDo you want to restart ?";
+        private const string iAssistantServiceAbsent = "Unknown Service";         // Service AI absent
+        private const string iAssistantModeleAbsent = "Unknown Model";            // Modèle AI absent
+        private const string iAssistantStringMaskServiceAndModel = "{0} | {1} | {2}";     // Masque d'affichage du Service, Modèle, et Type de Modèle
+        private const string iAssistantStringMaskCompletionPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[Prompt] {2}\n\n[Temperature] {3}\n\n[max_tokens] {4}\n\n";
+        private const string iAssistantStringMaskChatPopupPrompt = "[Model] {0}\n\n[Type] {1}\n\n[System] {2}\n\n[User] {3}\n\n[Temperature] {4}\n\n[max_tokens] {5}\n\n";
+        private const string iAssistantStringMaskChatPopupPromptNA = "N/A";
+        private const string iAssistantTripleClicSentenceCars = ".?!\n";           // Ponctuation de début de phrase
+        private const string iAssistantAICallMsgBoxTitle = "AI Call...";           // Timer Msg Box Titre        
+        private const string iAssistantActionPanelButtonCfgMenuLabel = "⚙ Edit";  // Label Menu Configuraiton Bouton IA
+        private const string iAssistantActionCfgTitle = "Configuration: ";
+        private const string iAssistantActionCfgName = "Name:";
+        private const string iAssistantActionCfgPrompt = "Prompt:";
+        private const string iAssistantActionCfgTemperature = "Temperature:";
+        private const string iAssistantActionCfgSvcModel = "Service / Model:";
+        private const string iAssistantActionCfgModelDefault = "<Default model>";
+        private const string iAssistantErrorLevelLabel = "[Level {0}] ";
+        private const string iAssistantStringMsgTrunc = "...";
+        private const int iAssistantFctButtonIconSize = 32;
+        private const string iAssistantDicteeButtonOffIcon = "RecordOff32.ico";          // Icon Bouton Dictee à l'arret
+        private const string iAssistantDicteeButtonText = "🎤";                          // Label Bouton Dictee à l'arret
+        private const string iAssistantDicteeButtonOnIcon = "RecordOn32.ico";            // Icon Bouton Dictee à l'enregistrement
+        private const string iAssistantDicteeButtonRecordText = "⏹";                    // Label Bouton Dictee à l'enregistrement
+        private const string iAssistantRdvButtonIcon = "Rendezvous32.ico";               // Icon Bouton Envoi Rdv    
+        private const string iAssistantRdvButtonText = "📅";                            // Label Bouton Envoi Rdv 
+        private const string iAssistantCourrielButtonIcon = "SendEmail32.ico";           // Label Bouton Envoi email
+        private const string iAssistantCourrielButtonText = "📨";                        // Label Bouton Envoi email
+        private const string iAssistantCourrielConfigTitle = "Open Outlook Email"; // Label Configuration Email - Titre
+        private const string iAssistantCourrielConfigObject = "Object:";                 // Label Configuration Email - Object
+        private const string iAssistantCourrielConfigLastObject = "iAssistant";            // Label Configuration Email - Object
+        private const bool iAssistantCourrielConfigLastDraft = true;                     // Label Configuration Email - Draft
+        private const string iAssistantDicteeStartButtonTip = "Start Vocal dictation";    // Tip boutton Dictee vocale
+        private const string iAssistantDicteeStopButtonTip = "Stop Vocal dictation";      // Tip boutton Dictee vocale
+        private const string iAssistantRdvButtonTip = "Open Outlook Meeting";   // Tip boutton Envoi Rdv 
 
-        internal const int aiMailerUndoStackMaxItems = 99;          // Pas plus de 99 Undos
-        private const int aiMailerPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
-        private const int aiMailerErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
-        private const int aiMailerDefaultTextFontSize = 11;         // Taille de police initiale
-        private const int aiMailerTextEditorLeftMargin = 10;        // Marge gauche Editeur
-        private const int aiMailerTextEditorRightMargin = 5;        // Marge droite Editeur
-        private const int aiMailerActionPanelXOffset = 0;           // Déclalage X du panneau d'Actions
-        private const int aiMailerActionPanelYOffset = 10;          // Déclalage Y du panneau d'Actions
-        private const int aiMailerEditeurHitGroupTimeMax = 500;     // Limite de temps (msec) pour le regroupement de texte (Undo)
-        private const int aiMailerFctButtonRigthMargin = 10;        // Marge droite Boutons de Fonctions 
-        private const int aiMailerFctButtonBottomMargin = 10;       // Marge Bas Boutons de Fonctions 
-        private const int aiMailerRegexTimeoutMsec = 5000;          // Time-out Regex (préco sonarqube)
-        private const float aiMailerDictationDefaultConfidence = (float)0.6; // Defautl Dictation Confidence
+        internal const int iAssistantUndoStackMaxItems = 99;          // Pas plus de 99 Undos
+        private const int iAssistantPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
+        private const int iAssistantErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
+        private const int iAssistantDefaultTextFontSize = 11;         // Taille de police initiale
+        private const int iAssistantTextEditorLeftMargin = 10;        // Marge gauche Editeur
+        private const int iAssistantTextEditorRightMargin = 5;        // Marge droite Editeur
+        private const int iAssistantActionPanelXOffset = 0;           // Déclalage X du panneau d'Actions
+        private const int iAssistantActionPanelYOffset = 10;          // Déclalage Y du panneau d'Actions
+        private const int iAssistantEditeurHitGroupTimeMax = 500;     // Limite de temps (msec) pour le regroupement de texte (Undo)
+        private const int iAssistantFctButtonRigthMargin = 10;        // Marge droite Boutons de Fonctions 
+        private const int iAssistantFctButtonBottomMargin = 10;       // Marge Bas Boutons de Fonctions 
+        private const int iAssistantRegexTimeoutMsec = 5000;          // Time-out Regex (préco sonarqube)
+        private const float iAssistantDictationDefaultConfidence = (float)0.6; // Defautl Dictation Confidence
 
         // ******************************************************
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
-        private const string aiMailerEditeurTextFontFamily = "Inter";                              // Police par défaut (ou "Segoe UI")
-        private const int aiMailerButtonTextFontSize = aiMailerDefaultTextFontSize - 1;            // Taille de police Boutons
-        private const int aiMailerEditeurMenuFontSize = aiMailerButtonTextFontSize;                // Taille de police Menuq
-        private const int aiMailerEditeurTextFontSizeMin = 6, aiMailerEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
-        private const int aiMailerDicteeButtonFontSize = aiMailerButtonTextFontSize + 10;          // Taille de police Texte Boutton Dictee
+        private const string iAssistantEditeurTextFontFamily = "Inter";                              // Police par défaut (ou "Segoe UI")
+        private const int iAssistantButtonTextFontSize = iAssistantDefaultTextFontSize - 1;            // Taille de police Boutons
+        private const int iAssistantEditeurMenuFontSize = iAssistantButtonTextFontSize;                // Taille de police Menuq
+        private const int iAssistantEditeurTextFontSizeMin = 6, iAssistantEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
+        private const int iAssistantDicteeButtonFontSize = iAssistantButtonTextFontSize + 10;          // Taille de police Texte Boutton Dictee
         // Tailles
-        private const int aiMailerEditeurTextWidth = 800, aiMailerEditeurTextHeight = 400;         // Taille fenetre Editeur initiale
-        private const int aiMailerTextFontSliderWidth = 200, aiMailerTextFontSliderHeight = 40;    // Taille du Curseur de police
-        private const int aiMailerTextXOffset = 10, aiMailerTextYOffset = 10;
-        private const int aiMailerTextXScrollbar = 25, aiMailerTextYScrollbar = 40;                // Taille Scrollbar Editeur
-        private const int aiMailerIAButtonIconSize = 32;                                           // Taille Icones des Boutons
-        private const int aiMailerButtonXOffset = 5, buttonYOffset = 5;                            // Decalage Boutons
-        private const int aiMailerButtonXSpace = 5, buttonYSpace = 5;                              // Boutons IA - Espacement 
-        private const int aiMailerButtonWidth = aiMailerIAButtonIconSize + 8;                      // Boutons IA - Largeur
-        private const int aiMailerButtonHeight = aiMailerButtonWidth;                              // Boutons IA - Hauteur
+        private const int iAssistantEditeurTextWidth = 800, iAssistantEditeurTextHeight = 400;         // Taille fenetre Editeur initiale
+        private const int iAssistantTextFontSliderWidth = 200, iAssistantTextFontSliderHeight = 40;    // Taille du Curseur de police
+        private const int iAssistantTextXOffset = 10, iAssistantTextYOffset = 10;
+        private const int iAssistantTextXScrollbar = 25, iAssistantTextYScrollbar = 40;                // Taille Scrollbar Editeur
+        private const int iAssistantIAButtonIconSize = 32;                                           // Taille Icones des Boutons
+        private const int iAssistantButtonXOffset = 5, buttonYOffset = 5;                            // Decalage Boutons
+        private const int iAssistantButtonXSpace = 5, buttonYSpace = 5;                              // Boutons IA - Espacement 
+        private const int iAssistantButtonWidth = iAssistantIAButtonIconSize + 8;                      // Boutons IA - Largeur
+        private const int iAssistantButtonHeight = iAssistantButtonWidth;                              // Boutons IA - Hauteur
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
         // private static readonly Color buttonPanelBackColor = Color.Empty;
         // private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
-        private static readonly Color aiMailerMyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
-        private static readonly Color aiMailerMyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
-        private static readonly Color aiMailerMyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
-        private static readonly Color aiMailerEditeurBackColor = aiMailerMyColorBluePale1;
-        private static readonly Color aiMailerEditeurMenuBackColor = aiMailerMyColorBluePale2;
-        private static readonly Color aiMailerEditeurMenuForeColor = aiMailerMyColorBlueDark;
-        private static readonly Color aiMailerEditeurCurseurForeColor = aiMailerMyColorBlueDark;
-        private static readonly Color aiMailerButtonBackColor = aiMailerMyColorBluePale2;
-        private static readonly Color aiMailerButtonForeColor = aiMailerMyColorBlueDark;
-        private int aiMailerEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
-        private int aiMailerEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
+        private static readonly Color iAssistantMyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
+        private static readonly Color iAssistantMyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
+        private static readonly Color iAssistantMyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
+        private static readonly Color iAssistantEditeurBackColor = iAssistantMyColorBluePale1;
+        private static readonly Color iAssistantEditeurMenuBackColor = iAssistantMyColorBluePale2;
+        private static readonly Color iAssistantEditeurMenuForeColor = iAssistantMyColorBlueDark;
+        private static readonly Color iAssistantEditeurCurseurForeColor = iAssistantMyColorBlueDark;
+        private static readonly Color iAssistantButtonBackColor = iAssistantMyColorBluePale2;
+        private static readonly Color iAssistantButtonForeColor = iAssistantMyColorBlueDark;
+        private int iAssistantEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
+        private int iAssistantEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
 
         // ********************************
         // ***** Error Messages ***********
         // ***************** **************
         private const string maskErrorMsgUnknown = "Code Erreur inconnu : {0}"; // Recois le code inconnu
-        private static readonly Dictionary<string, string> aiMailerErrorMsgs = new Dictionary<string, string>
+        private static readonly Dictionary<string, string> iAssistantErrorMsgs = new Dictionary<string, string>
         {
-            { "ERROR_EDITOR_NOTEXT",           "Please enter text..." },
-            { "ERROR_EDITOR_IACALL",           "Error while calling IA!" },
-            { "ERROR_EDITOR_CFGFILEOPEN",      "Configuration file impossible to open!" },
-            { "ERROR_EDITOR_CFGFILEBAD",       "Configuration file not compliant!" },
-            { "ERROR_EDITOR_CFGFILEUNKNOWN",   "Configuration file impossible to find!" },
-            { "ERROR_EDITOR_AUTOSAVEERR",      "Editor text impossible to save!" },
-            { "ERROR_EDITOR_APPRESTART",       "Application impossible to restart !" },
-            { "ERROR_EDITOR_IASERVICEUNKNOW",  "No AI service: AI Call impossible!" },
-            { "ERROR_EDITOR_IAMODELUNKNOWN",   "Unknown AI model: AI call impossible!" },
-            { "ERROR_EDITOR_REGEXTIMEOUT",     "Internal Error : Time-out on Regex call!" },
-            { "ERROR_EDITOR_OUTLOOKNOTRUNNING","Please launch Outlook in order to allow interactions!" },
-            { "ERROR_EDITOR_OUTLOOKSENDDIRECT","Error while sending email : Please check that Outlook is running fine!" },
-            { "ERROR_EDITOR_OUTLOOKSAVEDRAFT", "Error while saving draft email : Please check that Outlook is running fine!" }
+            { "ERROR_EDITOR_NOTEXT",            "Please enter text..." },
+            { "ERROR_EDITOR_IACALL",            "Error while calling IA!" },
+            { "ERROR_EDITOR_IACALLTOKENUNKNOWN","Authentication token unknown!\nPlease set environment variable referenced below..." },
+            { "ERROR_EDITOR_CFGFILEOPEN",       "Configuration file impossible to open!" },
+            { "ERROR_EDITOR_CFGFILEBAD",        "Configuration file not compliant!" },
+            { "ERROR_EDITOR_CFGFILEUNKNOWN",    "Configuration file impossible to find!" },
+            { "ERROR_EDITOR_AUTOSAVEERR",       "Editor text impossible to save!" },
+            { "ERROR_EDITOR_APPRESTART",        "Application impossible to restart !" },
+            { "ERROR_EDITOR_IASERVICEUNKNOW",   "No AI service: AI Call impossible!" },
+            { "ERROR_EDITOR_IAMODELUNKNOWN",    "Unknown AI model: AI call impossible!" },
+            { "ERROR_EDITOR_REGEXTIMEOUT",      "Internal Error : Time-out on Regex call!" },
+            { "ERROR_EDITOR_OUTLOOKNOTRUNNING", "Please launch Outlook in order to allow interactions!" },
+            { "ERROR_EDITOR_OUTLOOKSENDDIRECT", "Error while sending email : Please check that Outlook is running fine!" },
+            { "ERROR_EDITOR_OUTLOOKSAVEDRAFT",  "Error while saving draft email : Please check that Outlook is running fine!" }
         };
 
         // *************************************************
         // ***** Variables "Globales" graphiques ***********
         // *************************************************
-        private TextBox aiMailerEditor = null;                                     // Text Box Editeur
-        private static Form aiMailerPaletteActions = null;                                // Palette d'action 
+        private TextBox iAssistantEditor = null;                                            // Text Box Editeur
+        private static Form iAssistantPaletteActions = null;                                // Palette d'action 
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
         // *****************************************************
-        private List<AIService> aiMailerAIServices = null;                         // Liste des Services IA configurés
-        private List<AIAction> aiMailerAIActions = null;                           // Liste des Modèles IA configurés
-        private AppConfiguration aiMailerAppConfiguration = null;                  // Configuraiton interne
-        private static AIService aiMailerAIServiceActif = null;                           // Ajout pour mémoriser le service actif
-        private static AIModel aiMailerAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
-        private readonly LinkedList<string> aiMailerUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
-        private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Redo
-        private readonly Timer aiMailerEditeurHitGroupTimer = new Timer();                // Timer de regroupement de Texte ppour le Undo
-        private bool aiMailerEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
-        private AIMailerVoiceDictation aiMailerDictationInstance = null;
-        private bool aiMailerIsDictating = false;
-        public static float aiMailerDictationConfidence = aiMailerDictationDefaultConfidence;
-        private int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize; // Taille de police Editeur initiale 
-        private string aiMailerEmailLastTo = aiMailerCourrielConfigLastTo;            // Email : dernier To
-        private string aiMailerEmailLastCc = aiMailerCourrielConfigLastCc;            // Email : dernier Cc
-        private string aiMailerEmailLastSubject = aiMailerCourrielConfigLastObject;   // Email : dernier Subject
-        private bool aiMailerEmailLastDraft = aiMailerCourrielConfigLastDraft;    // Email : dernier Draft
+        private List<AIService> iAssistantAIServices = null;                                // Liste des Services IA configurés
+        private List<AIAction> iAssistantAIActions = null;                                  // Liste des Modèles IA configurés
+        private AppConfiguration iAssistantAppConfiguration = null;                         // Configuraiton interne
+        private static AIService iAssistantAIServiceActif = null;                           // Ajout pour mémoriser le service actif
+        private static AIModel iAssistantAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
+        private readonly LinkedList<string> iAssistantUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
+        private readonly LinkedList<string> iAssistantRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Redo
+        private readonly Timer iAssistantEditeurHitGroupTimer = new Timer();                // Timer de regroupement de Texte ppour le Undo
+        private bool iAssistantEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
+        private IAssistantVoiceDictation iAssistantDictationInstance = null;
+        private bool iAssistantIsDictating = false;
+        public static float iAssistantDictationConfidence = iAssistantDictationDefaultConfidence;
+        private int iAssistantEditeurDefaultTextFontSize = iAssistantDefaultTextFontSize;     // Taille de police Editeur initiale 
+        private string iAssistantEmailLastSubject = iAssistantCourrielConfigLastObject;       // Email : dernier Subject
+        private bool iAssistantEmailLastDraft = iAssistantCourrielConfigLastDraft;            // Email : dernier Draft
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
         // des seuls ServiceId et ModelId de l'action.
         // ------------------------------------------------------------------
         private AIService GetServiceFor(AIAction action)
-            => aiMailerAIServices.FirstOrDefault(s => s.Id == action.ServiceId);
+            => iAssistantAIServices.FirstOrDefault(s => s.Id == action.ServiceId);
 
         private AIModel GetModelFor(AIAction action)
             => GetServiceFor(action).Models.FirstOrDefault(m => m.Id == action.ModelId);
@@ -288,7 +286,7 @@ namespace AIMailer
             public int TextFontSize { get; set; }
             public float DictationConfidence { get; set; }
         }
-        // aiMailerEditeurDefaultTextFontSize
+        // iAssistantEditeurDefaultTextFontSize
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Appel à l'IA à partir des boutons ****************************
@@ -312,8 +310,8 @@ namespace AIMailer
         private async Task AIMAilerAIMethod(AIAction action)
         {
             // 1) Lookup dynamique ou valeurs globales si override "Default"
-            var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? aiMailerAIServiceActif : GetServiceFor(action);
-            var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? aiMailerAIModeleActif : GetModelFor(action);
+            var svcLocal = string.IsNullOrEmpty(action.ServiceId) ? iAssistantAIServiceActif : GetServiceFor(action);
+            var mdlLocal = string.IsNullOrEmpty(action.ModelId) ? iAssistantAIModeleActif : GetModelFor(action);
 
             // 2) Vérifications
             if (mdlLocal == null)
@@ -327,9 +325,9 @@ namespace AIMailer
                 return;
             }
 
-            string texteUtilisateur = string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText)
-                ? aiMailerEditor.Text
-                : aiMailerEditor.SelectedText;
+            string texteUtilisateur = string.IsNullOrWhiteSpace(iAssistantEditor.SelectedText)
+                ? iAssistantEditor.Text
+                : iAssistantEditor.SelectedText;
             if (string.IsNullOrWhiteSpace(texteUtilisateur))
             {
                 ErrorShow("ERROR_EDITOR_NOTEXT", action.Name);
@@ -350,7 +348,7 @@ namespace AIMailer
             // *******************************************************
             Form waitDlg = new Form
             {
-                Text = aiMailerIACallTitle,
+                Text = iAssistantIACallTitle,
                 FormBorderStyle = FormBorderStyle.FixedDialog,
                 ControlBox = false,
                 StartPosition = FormStartPosition.CenterParent,
@@ -427,7 +425,14 @@ namespace AIMailer
                     if (!string.IsNullOrEmpty(svcLocal.Key))
                         bearerToken = svcLocal.Key;
                     else if (!string.IsNullOrEmpty(svcLocal.KeyVar))
+                    { 
                         bearerToken = Environment.GetEnvironmentVariable(svcLocal.KeyVar);
+                        if (bearerToken == null)
+                        { 
+                            ErrorShow("ERROR_EDITOR_IACALLTOKENUNKNOWN", svcLocal.KeyVar);
+                            return;
+                        }
+                    }
 
                     if (!string.IsNullOrEmpty(bearerToken))
                         client.DefaultRequestHeaders.Authorization =
@@ -465,7 +470,7 @@ namespace AIMailer
                     if (!waitDlg.IsDisposed) waitDlg.Close();
                     this.Enabled = true;
                     this.Activate();    // remet la fenêtre au premier plan
-                    aiMailerEditor.Focus();
+                    iAssistantEditor.Focus();
                 }
 
             }
@@ -479,13 +484,13 @@ namespace AIMailer
             // Temperature with model ratio
             decimal calcTemp = action.Temperature * (mdl.TemperatureRatio > 0 ? mdl.TemperatureRatio : 1);
             string aiModel = mdl.Model;
-            string serviceAndModel = string.Format(aiMailerStringMaskServiceAndModel, svc.Name, mdl.Name, mdl.Type);
+            string serviceAndModel = string.Format(iAssistantStringMaskServiceAndModel, svc.Name, mdl.Name, mdl.Type);
             string typeString = mdl.Type.ToString();
             string actionPrompt = action.Prompt;
             string minPrompt = actionPrompt + " " + texteUtilisateur;
             string fullActionPrompt = svc.Context + " " + actionPrompt;
             string fullActionAndUserPrompt = fullActionPrompt + " " + texteUtilisateur;
-            string notApplString = aiMailerStringMaskChatPopupPromptNA;
+            string notApplString = iAssistantStringMaskChatPopupPromptNA;
             int notApplTokens = 0;
             string messageToShow = null;
             object returnedObject = null;
@@ -493,23 +498,23 @@ namespace AIMailer
             // Enlever NewLine en doublons et tronquer "Texte Utilisateur" dans le message à afficher 
             //string userTextShort = Regex.Replace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
             string userTextShort = RegexSafeReplace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
-            userTextShort = userTextShort.Length > aiMailerPromptToShowLengthMax
-                            ? userTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
+            userTextShort = userTextShort.Length > iAssistantPromptToShowLengthMax
+                            ? userTextShort.Substring(0, iAssistantPromptToShowLengthMax) + iAssistantStringMsgTrunc
                             : userTextShort;
 
             // Enlever NewLine en doublons et tronquer "Full Action Prompt" dans le message à afficher 
             // Timeout
             //string fullActionAndUserTextShort = Regex.Replace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
             string fullActionAndUserTextShort = RegexSafeReplace(fullActionAndUserPrompt, @"(\r?\n){2,}", Environment.NewLine);
-            fullActionAndUserTextShort = fullActionAndUserTextShort.Length > aiMailerPromptToShowLengthMax
-                ? fullActionAndUserTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
+            fullActionAndUserTextShort = fullActionAndUserTextShort.Length > iAssistantPromptToShowLengthMax
+                ? fullActionAndUserTextShort.Substring(0, iAssistantPromptToShowLengthMax) + iAssistantStringMsgTrunc
                 : fullActionAndUserTextShort;
 
             // Build Prompt depending on Actif Model
             switch (mdl.Type)
             {
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
-                    messageToShow = string.Format(aiMailerStringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, notApplTokens);
+                    messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -519,7 +524,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatTokens:          // Modèle ChatTokens: Roles System + User + MaxTokens
-                    messageToShow = string.Format(aiMailerStringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -530,7 +535,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUser:            // Modèle ChatUser: Role User 
-                    messageToShow = string.Format(aiMailerStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, notApplTokens);
+                    messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -540,7 +545,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserTokens:      // Modèle ChatUserTokens: Roles User + MaxTokens
-                    messageToShow = string.Format(aiMailerStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -551,7 +556,7 @@ namespace AIMailer
                     break;
 
                 case AIModelType.ChatUserMin:         // Modèle ChatTokens: Role User with min. Prompt (no Prompt Context)
-                    messageToShow = string.Format(aiMailerStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, notApplString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new
                     {
                         model = aiModel,
@@ -561,17 +566,17 @@ namespace AIMailer
                     break;
 
                 case AIModelType.Completion:          // Modèle Completion: Prompt 
-                    messageToShow = string.Format(aiMailerStringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, notApplTokens);
+                    messageToShow = string.Format(iAssistantStringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, notApplTokens);
                     returnedObject = new { model = aiModel, prompt = fullActionAndUserPrompt, temperature = calcTemp };
                     break;
 
                 case AIModelType.CompletionTokens:    // Modèle Completion: Prompt + MaxTokens
-                    messageToShow = string.Format(aiMailerStringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
+                    messageToShow = string.Format(iAssistantStringMaskCompletionPopupPrompt, serviceAndModel, typeString, fullActionAndUserTextShort, calcTemp, mdl.TokensMax);
                     returnedObject = new { model = aiModel, prompt = fullActionAndUserPrompt, temperature = calcTemp, max_tokens = mdl.TokensMax };
                     break;
 
                 case AIModelType.CompletionMin:       // Modèle Completion: Prompt (no Prompt Context) 
-                    messageToShow = string.Format(aiMailerStringMaskCompletionPopupPrompt, serviceAndModel, typeString, minPrompt, calcTemp, notApplTokens);
+                    messageToShow = string.Format(iAssistantStringMaskCompletionPopupPrompt, serviceAndModel, typeString, minPrompt, calcTemp, notApplTokens);
                     returnedObject = new { model = aiModel, prompt = minPrompt, temperature = calcTemp };
                     break;
 
@@ -590,21 +595,21 @@ namespace AIMailer
         private void AIMAilerAIReplyReplace(string aiReponseTexte)
         {
             // 🔁 UNDO/REDO : sauvegarde l'état actuel, vide le redo
-            aiMailerUndoStack.Push(aiMailerEditor.Text);
-            aiMailerRedoStack.Clear();
+            iAssistantUndoStack.Push(iAssistantEditor.Text);
+            iAssistantRedoStack.Clear();
 
             // Remplacement de l'intégralité du texte (si aucun texte n'est sélectionné)
-            if (string.IsNullOrWhiteSpace(aiMailerEditor.SelectedText))
-                aiMailerEditor.Text = aiReponseTexte;
+            if (string.IsNullOrWhiteSpace(iAssistantEditor.SelectedText))
+                iAssistantEditor.Text = aiReponseTexte;
             else
             // ou Remplacement du texte n'est sélectionné
             {
-                int selStart = aiMailerEditor.SelectionStart;
-                int selLength = aiMailerEditor.SelectionLength;
-                aiMailerEditor.Text = aiMailerEditor.Text.Substring(0, selStart) + aiReponseTexte +
-                               aiMailerEditor.Text.Substring(selStart + selLength);
-                aiMailerEditor.SelectionStart = selStart;
-                aiMailerEditor.SelectionLength = aiReponseTexte.Length;
+                int selStart = iAssistantEditor.SelectionStart;
+                int selLength = iAssistantEditor.SelectionLength;
+                iAssistantEditor.Text = iAssistantEditor.Text.Substring(0, selStart) + aiReponseTexte +
+                               iAssistantEditor.Text.Substring(selStart + selLength);
+                iAssistantEditor.SelectionStart = selStart;
+                iAssistantEditor.SelectionLength = aiReponseTexte.Length;
             }
         }
 
@@ -615,21 +620,21 @@ namespace AIMailer
         ///// **********************************************************************
 
         // Initialisation de la fenêtre par appel à la fonction générée par Visual Studio
-        public AIMailer()
+        public IAssistant()
         {
             InitializeComponent();       // Fonction générée par VS dans Form1.Designer
         }
 
         // lancement de l'application par la fct appelée après création de la fenêtre
-        private void AIMailer_Load(object sender, EventArgs e)
+        private void IAssistant_Load(object sender, EventArgs e)
         {
             LoadConfigurationFile();              // Lecture de la configuration de l'appli
             InitialiserInterface();               // Adaptation de la fenêtre
             RestoreEditorAutoSave();              // 💾 Restaure Autosave
-            this.FormClosing += AIMailer_Close;
+            this.FormClosing += IAssistant_Close;
         }
 
-        private void AIMailer_Close(object sender, EventArgs e)
+        private void IAssistant_Close(object sender, EventArgs e)
         {
             EditorAutoSave(); // Ajoute AutoSave à la fermeture de la fenetre 
         }
@@ -641,13 +646,13 @@ namespace AIMailer
         ///// **********************************************************************
         private void LoadConfigurationFile()
         {
-            string configFilePath = Path.Combine(WinForms.Application.StartupPath, aiMailerConfigFile);
-            //aiMailerAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
+            string configFilePath = Path.Combine(WinForms.Application.StartupPath, iAssistantConfigFile);
+            //iAssistantAIActions = new List<AIAction>(); // Pour eviter les erreurs si pas de fichier
 
             // Erreur Fichier absent ou non accessible (droits)
             if (!File.Exists(configFilePath))
             {
-                ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", WinForms.Application.StartupPath, aiMailerConfigFile);
+                ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", WinForms.Application.StartupPath, iAssistantConfigFile);
                 return;
             }
 
@@ -660,42 +665,40 @@ namespace AIMailer
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 options.Converters.Add(new JsonStringEnumConverter()); // Lecture Enumeration (pr ModelType)
 
-                var config = JsonSerializer.Deserialize<AIMailerConfigurationFile>(json, options);
+                var config = JsonSerializer.Deserialize<IAssistantConfigurationFile>(json, options);
                 // Parsing des Actions et des Services
-                aiMailerAIActions = config.Actions ?? new List<AIAction>();
-                aiMailerAIServices = config.Services ?? new List<AIService>();
+                iAssistantAIActions = config.Actions ?? new List<AIAction>();
+                iAssistantAIServices = config.Services ?? new List<AIService>();
 
                 // Parsing de la configuration interne
-                aiMailerAppConfiguration = config.Configuration ?? new AppConfiguration();
-                EmailConfiguration emailCfg = aiMailerAppConfiguration.Email;
-                aiMailerEmailLastTo = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastTo)) ? aiMailerCourrielConfigLastTo : emailCfg.LastTo;
-                aiMailerEmailLastCc = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastCc)) ? aiMailerCourrielConfigLastCc : emailCfg.LastCc;
-                aiMailerEmailLastSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastSubject)) ? aiMailerCourrielConfigLastObject : emailCfg.LastSubject;
-                aiMailerEmailLastDraft = emailCfg.LastDraft;
+                iAssistantAppConfiguration = config.Configuration ?? new AppConfiguration();
+                EmailConfiguration emailCfg = iAssistantAppConfiguration.Email;
+                iAssistantEmailLastSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastSubject)) ? iAssistantCourrielConfigLastObject : emailCfg.LastSubject;
+                iAssistantEmailLastDraft = emailCfg.LastDraft;
 
-                EditorConfiguration editorCfg = aiMailerAppConfiguration.Editor;
-                aiMailerEditeurDefaultTextFontSize = (editorCfg == null)
-                                                    || (editorCfg.TextFontSize < aiMailerEditeurTextFontSizeMin)
-                                                    || (editorCfg.TextFontSize > aiMailerEditeurTextFontSizeMax) ? aiMailerDefaultTextFontSize : editorCfg.TextFontSize;
-                aiMailerDictationConfidence = (editorCfg == null) ? aiMailerDictationDefaultConfidence : editorCfg.DictationConfidence;
+                EditorConfiguration editorCfg = iAssistantAppConfiguration.Editor;
+                iAssistantEditeurDefaultTextFontSize = (editorCfg == null)
+                                                    || (editorCfg.TextFontSize < iAssistantEditeurTextFontSizeMin)
+                                                    || (editorCfg.TextFontSize > iAssistantEditeurTextFontSizeMax) ? iAssistantDefaultTextFontSize : editorCfg.TextFontSize;
+                iAssistantDictationConfidence = (editorCfg == null) ? iAssistantDictationDefaultConfidence : editorCfg.DictationConfidence;
 
 
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
-                aiMailerAIModeleActif = aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
-                   ?? aiMailerAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
+                iAssistantAIModeleActif = iAssistantAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
+                   ?? iAssistantAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(); // sinon, le premier modèle
 
                 // Trouve le Service correspondant au Modèle par défaut ou sélectionne le premier par défaut
-                aiMailerAIServiceActif = aiMailerAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(aiMailerAIModeleActif))
-                    ?? aiMailerAIServices?.FirstOrDefault();
+                iAssistantAIServiceActif = iAssistantAIServices?.FirstOrDefault(s => s.Models != null && s.Models.Contains(iAssistantAIModeleActif))
+                    ?? iAssistantAIServices?.FirstOrDefault();
             }
             catch (SystemException ex)    // Erreur Fichier mal formatté
             {
-                ErrorShow("ERROR_EDITOR_CFGFILEBAD", ex.Message, WinForms.Application.StartupPath, aiMailerConfigFile);
+                ErrorShow("ERROR_EDITOR_CFGFILEBAD", ex.Message, WinForms.Application.StartupPath, iAssistantConfigFile);
             }
         }
 
         // Structure de Parsing du fichier de configuration
-        private class AIMailerConfigurationFile
+        private class IAssistantConfigurationFile
         {
             public List<AIAction> Actions { get; set; }          // AI Actions
             public List<AIService> Services { get; set; }        // AI Services 
@@ -705,16 +708,16 @@ namespace AIMailer
 
         /// <summary>
         /// (Ré)écrit le fichier de configuration JSON de l’application
-        /// à partir des listes en mémoire aiMailerAIServices et aiMailerAIActions.
+        /// à partir des listes en mémoire iAssistantAIServices et iAssistantAIActions.
         /// </summary>
         private void SaveConfigurationFile()
         {
             // 1. Prépare l’objet « racine » à sérialiser
-            var config = new AIMailerConfigurationFile
+            var config = new IAssistantConfigurationFile
             {
-                Actions = aiMailerAIActions,
-                Services = aiMailerAIServices,
-                Configuration = aiMailerAppConfiguration
+                Actions = iAssistantAIActions,
+                Services = iAssistantAIServices,
+                Configuration = iAssistantAppConfiguration
             };
 
             // 2. Options de sérialisation
@@ -732,7 +735,7 @@ namespace AIMailer
                 string json = JsonSerializer.Serialize(config, options);
 
                 // 4. Écrit sur disque (remplace le fichier existant)
-                string cfgPath = Path.Combine(WinForms.Application.StartupPath, aiMailerConfigFile);
+                string cfgPath = Path.Combine(WinForms.Application.StartupPath, iAssistantConfigFile);
                 File.WriteAllText(cfgPath, json, Encoding.UTF8);
 
             }
@@ -751,10 +754,10 @@ namespace AIMailer
         ///// **********************************************************************
         private void InitialiserInterface()
         {
-            this.Font = new Font(aiMailerEditeurTextFontFamily, aiMailerEditeurDefaultTextFontSize);
+            this.Font = new Font(iAssistantEditeurTextFontFamily, iAssistantEditeurDefaultTextFontSize);
 
             // Charte graphique / ergonomie
-            this.BackColor = aiMailerEditeurBackColor;
+            this.BackColor = iAssistantEditeurBackColor;
 
             //this.FormBorderStyle = FormBorderStyle.SizableToolWindow;
 
@@ -783,21 +786,21 @@ namespace AIMailer
         private void InitialiserInterfaceEditeur(int menuStripYOffset)
         {
             // Taille Textbox 
-            this.Text = aiMailerName;
-            this.Size = new Size(aiMailerEditeurTextWidth + 2 * aiMailerTextXOffset + 20,
-                                menuStripYOffset + aiMailerTextFontSliderHeight + aiMailerEditeurTextHeight
-                                + 2 * aiMailerTextYOffset + aiMailerTextYScrollbar);
+            this.Text = iAssistantName;
+            this.Size = new Size(iAssistantEditeurTextWidth + 2 * iAssistantTextXOffset + 20,
+                                menuStripYOffset + iAssistantTextFontSliderHeight + iAssistantEditeurTextHeight
+                                + 2 * iAssistantTextYOffset + iAssistantTextYScrollbar);
 
             // ************************************************
             // 🔁 Zone de texte principale
             // ************************************************
-            aiMailerEditor = new TextBox
+            iAssistantEditor = new TextBox
             {
                 Multiline = true,
-                Name = aiMailerEditorName,
-                Size = new Size(aiMailerEditeurTextWidth, aiMailerEditeurTextHeight),
-                Font = new Font(this.Font.FontFamily, aiMailerEditeurDefaultTextFontSize),
-                Location = new Point(aiMailerTextXOffset, menuStripYOffset + aiMailerTextYOffset),
+                Name = iAssistantEditorName,
+                Size = new Size(iAssistantEditeurTextWidth, iAssistantEditeurTextHeight),
+                Font = new Font(this.Font.FontFamily, iAssistantEditeurDefaultTextFontSize),
+                Location = new Point(iAssistantTextXOffset, menuStripYOffset + iAssistantTextYOffset),
                 ScrollBars = ScrollBars.Vertical,
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right
             };
@@ -809,64 +812,64 @@ namespace AIMailer
 
             // 🔁 Menu contextuel : Actions IA
             // === NOUVEL ITEM ======================================================
-            MenuItem iaActionsMenuItem = new MenuItem(aiMailerTextEditorActionsIAMenuLabel);
+            MenuItem iaActionsMenuItem = new MenuItem(iAssistantTextEditorActionsIAMenuLabel);
             iaActionsMenuItem.Click += (s, e) => OuvrirPaletteActions(true);
 
             contextMenu.MenuItems.Add(iaActionsMenuItem);
             contextMenu.MenuItems.Add("-");           // séparateur visuel (facultatif)
 
             // 🔁 Menu contextuel : Undo/Redo
-            MenuItem undoMenuItem = new MenuItem(aiMailerTextEditorAnnulerMenuLabel);
+            MenuItem undoMenuItem = new MenuItem(iAssistantTextEditorAnnulerMenuLabel);
             undoMenuItem.Click += (s, e) => EditorUndoLastChange();
             contextMenu.MenuItems.Add(undoMenuItem);
-            MenuItem redoMenuItem = new MenuItem(aiMailerTextEditorRefaireMenuLabel);
+            MenuItem redoMenuItem = new MenuItem(iAssistantTextEditorRefaireMenuLabel);
             redoMenuItem.Click += (s, e) => EditorRedoLastChange();
             contextMenu.MenuItems.Add(redoMenuItem);
             contextMenu.MenuItems.Add("-");
 
             // 🔁 Menu contextuel : Erase
-            MenuItem clearMenuItem = new MenuItem(aiMailerTextEditorEffacerMenuLabel);
+            MenuItem clearMenuItem = new MenuItem(iAssistantTextEditorEffacerMenuLabel);
             clearMenuItem.Click += (s, e) => EditorEraseText();
             contextMenu.MenuItems.Add(clearMenuItem);
             contextMenu.MenuItems.Add("-");
 
             // 🔁 Menu contextuel : Couper, Coller, Paste, Select all
-            MenuItem cutMenuItem = new MenuItem(aiMailerTextEditorCouperMenuLabel);
+            MenuItem cutMenuItem = new MenuItem(iAssistantTextEditorCouperMenuLabel);
             cutMenuItem.Click += (s, e) =>
             {
-                aiMailerUndoStack.Push(aiMailerEditor.Text);
-                aiMailerRedoStack.Clear();
-                aiMailerEditor.Cut();
+                iAssistantUndoStack.Push(iAssistantEditor.Text);
+                iAssistantRedoStack.Clear();
+                iAssistantEditor.Cut();
             };
             contextMenu.MenuItems.Add(cutMenuItem);
-            MenuItem copyMenuItem = new MenuItem(aiMailerTextEditorCopierMenuLabel);
-            copyMenuItem.Click += (s, e) => aiMailerEditor.Copy();
+            MenuItem copyMenuItem = new MenuItem(iAssistantTextEditorCopierMenuLabel);
+            copyMenuItem.Click += (s, e) => iAssistantEditor.Copy();
             contextMenu.MenuItems.Add(copyMenuItem);
-            MenuItem pasteMenuItem = new MenuItem(aiMailerTextEditorCollerMenuLabel);
+            MenuItem pasteMenuItem = new MenuItem(iAssistantTextEditorCollerMenuLabel);
             pasteMenuItem.Click += (s, e) =>
             {
-                aiMailerUndoStack.Push(aiMailerEditor.Text);
-                aiMailerRedoStack.Clear();
-                aiMailerEditor.Paste();
+                iAssistantUndoStack.Push(iAssistantEditor.Text);
+                iAssistantRedoStack.Clear();
+                iAssistantEditor.Paste();
             };
             contextMenu.MenuItems.Add(pasteMenuItem);
-            MenuItem selectAllMenuItem = new MenuItem(aiMailerTextEditorSelectionnerMenuLabel);
+            MenuItem selectAllMenuItem = new MenuItem(iAssistantTextEditorSelectionnerMenuLabel);
 
-            selectAllMenuItem.Click += (s, e) => aiMailerEditor.SelectAll();
+            selectAllMenuItem.Click += (s, e) => iAssistantEditor.SelectAll();
             contextMenu.MenuItems.Add(selectAllMenuItem);
 
             // Gestion du Undo pour l'écriture 
-            aiMailerEditor.KeyDown += AiMailerEditor_KeyDown;
+            iAssistantEditor.KeyDown += AiMailerEditor_KeyDown;
 
-            aiMailerEditor.ContextMenu = contextMenu;
-            this.Controls.Add(aiMailerEditor);
+            iAssistantEditor.ContextMenu = contextMenu;
+            this.Controls.Add(iAssistantEditor);
 
-            SetTextBoxMargins(aiMailerEditor, aiMailerTextEditorLeftMargin, aiMailerTextEditorRightMargin);
+            SetTextBoxMargins(iAssistantEditor, iAssistantTextEditorLeftMargin, iAssistantTextEditorRightMargin);
 
             // Gestion du Triple click et des actions IA
-            aiMailerEditor.MouseDown += AiMailerEditor_MouseDown;
-            aiMailerEditor.MouseUp += AiMailerEditor_MouseUp;
-            aiMailerEditor.KeyUp += AiMailerEditor_KeyUp;
+            iAssistantEditor.MouseDown += AiMailerEditor_MouseDown;
+            iAssistantEditor.MouseUp += AiMailerEditor_MouseUp;
+            iAssistantEditor.KeyUp += AiMailerEditor_KeyUp;
         }
 
         // Gestion des frappes clavier pour le Undo / Redo 
@@ -889,15 +892,15 @@ namespace AIMailer
             else if (!e.Control && !e.Alt && e.KeyCode != Keys.ShiftKey)
             {
                 // Si on n'est pas déjà dans un bloc, on en crée un (push initial)
-                if (!aiMailerEditeurHitGroupActive)
+                if (!iAssistantEditeurHitGroupActive)
                 {
-                    aiMailerUndoStack.Push(aiMailerEditor.Text);
-                    aiMailerRedoStack.Clear();
-                    aiMailerEditeurHitGroupActive = true;
+                    iAssistantUndoStack.Push(iAssistantEditor.Text);
+                    iAssistantRedoStack.Clear();
+                    iAssistantEditeurHitGroupActive = true;
                 }
                 // On redémarre le timer pour prolonger le bloc
-                aiMailerEditeurHitGroupTimer.Stop();
-                aiMailerEditeurHitGroupTimer.Start();
+                iAssistantEditeurHitGroupTimer.Stop();
+                iAssistantEditeurHitGroupTimer.Start();
             }
         }
 
@@ -905,10 +908,10 @@ namespace AIMailer
         private void EditorUndoLastChange()
         {
             // Empile l'Editeur sur le Redo et le remplace par un Dépile du Undo 
-            if (aiMailerUndoStack.Count > 0)
+            if (iAssistantUndoStack.Count > 0)
             {
-                aiMailerRedoStack.Push(aiMailerEditor.Text ?? string.Empty);
-                aiMailerEditor.Text = aiMailerUndoStack.Pop();
+                iAssistantRedoStack.Push(iAssistantEditor.Text ?? string.Empty);
+                iAssistantEditor.Text = iAssistantUndoStack.Pop();
             }
             else
                 SystemSounds.Beep.Play(); // Aucun texte à annuler
@@ -917,10 +920,10 @@ namespace AIMailer
         private void EditorRedoLastChange()
         {
             // Empile l'Editeur sur le Undo et le remplace par un Dépile du Redo
-            if (aiMailerRedoStack.Count > 0)
+            if (iAssistantRedoStack.Count > 0)
             {
-                aiMailerUndoStack.Push(aiMailerEditor.Text);
-                aiMailerEditor.Text = aiMailerRedoStack.Pop();
+                iAssistantUndoStack.Push(iAssistantEditor.Text);
+                iAssistantEditor.Text = iAssistantRedoStack.Pop();
             }
             else
                 SystemSounds.Beep.Play();
@@ -929,9 +932,9 @@ namespace AIMailer
         private void EditorEraseText()
         {
             // Empile l'Editeur sur le Undo et le remplace par un Dépile du Redo
-            aiMailerUndoStack.Push(aiMailerEditor.Text);
-            aiMailerRedoStack.Clear();
-            aiMailerEditor.Clear();
+            iAssistantUndoStack.Push(iAssistantEditor.Text);
+            iAssistantRedoStack.Clear();
+            iAssistantEditor.Clear();
         }
 
         /// 🔁 GESTION CLAVIER Ctrl+Z / Ctrl+Y
@@ -949,10 +952,10 @@ namespace AIMailer
         /// 💾 RESTAURER AUTO SAUVEGARDE
         private void RestoreEditorAutoSave()
         {
-            string autosavePath = Path.Combine(WinForms.Application.StartupPath, aiMailerAutoSaveFile);
+            string autosavePath = Path.Combine(WinForms.Application.StartupPath, iAssistantAutoSaveFile);
             if (File.Exists(autosavePath))
             {
-                aiMailerEditor.Text = File.ReadAllText(autosavePath);
+                iAssistantEditor.Text = File.ReadAllText(autosavePath);
             }
         }
 
@@ -963,24 +966,24 @@ namespace AIMailer
             // Curseur pour la taille du texte
             TrackBar fontSizeSlider = new TrackBar
             {
-                Minimum = aiMailerEditeurTextFontSizeMin,
-                Maximum = aiMailerEditeurTextFontSizeMax,
-                Value = aiMailerEditeurDefaultTextFontSize,
+                Minimum = iAssistantEditeurTextFontSizeMin,
+                Maximum = iAssistantEditeurTextFontSizeMax,
+                Value = iAssistantEditeurDefaultTextFontSize,
                 TickFrequency = 2,
                 SmallChange = 1,
                 LargeChange = 2,
                 Orientation = Orientation.Horizontal,
-                Location = new Point(aiMailerTextXOffset, aiMailerEditor.Bottom + 10),
-                Width = aiMailerTextFontSliderWidth,
+                Location = new Point(iAssistantTextXOffset, iAssistantEditor.Bottom + 10),
+                Width = iAssistantTextFontSliderWidth,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
             };
 
             // Étiquette pour afficher la taille actuelle
             Label fontSizeLabel = new Label
             {
-                Text = aiMailerTextFontSliderLabel + aiMailerEditeurDefaultTextFontSize,
-                Font = new Font(this.Font.FontFamily, aiMailerEditeurMenuFontSize),
-                ForeColor = aiMailerEditeurCurseurForeColor,
+                Text = iAssistantTextFontSliderLabel + iAssistantEditeurDefaultTextFontSize,
+                Font = new Font(this.Font.FontFamily, iAssistantEditeurMenuFontSize),
+                ForeColor = iAssistantEditeurCurseurForeColor,
                 Location = new Point(fontSizeSlider.Right + 10, fontSizeSlider.Top + 5),
                 AutoSize = true,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left
@@ -990,37 +993,37 @@ namespace AIMailer
             fontSizeSlider.Scroll += (s, e) =>
             {
                 int newSize = fontSizeSlider.Value;
-                aiMailerEditor.Font = new Font(aiMailerEditor.Font.FontFamily, newSize);
-                fontSizeLabel.Text = aiMailerTextFontSliderLabel + newSize;
+                iAssistantEditor.Font = new Font(iAssistantEditor.Font.FontFamily, newSize);
+                fontSizeLabel.Text = iAssistantTextFontSliderLabel + newSize;
             };
 
 
             // Ajout à la fenêtre
             this.Controls.Add(fontSizeSlider);
             this.Controls.Add(fontSizeLabel);
-            hoverTip.SetToolTip(fontSizeSlider, aiMailerTextFontSliderTip);
+            hoverTip.SetToolTip(fontSizeSlider, iAssistantTextFontSliderTip);
         }
 
         /// Bouton de dictée (expérimental) & Email
         private void InitialiserInterfaceEditeurBoutonsFonctions()
         {
-            Font btnFont = new Font(this.Font.FontFamily, aiMailerDicteeButtonFontSize);
-            int spacing = aiMailerFctButtonRigthMargin;
+            Font btnFont = new Font(this.Font.FontFamily, iAssistantDicteeButtonFontSize);
+            int spacing = iAssistantFctButtonRigthMargin;
 
             ///
             /// Bouton de Dictee Vocale 
             ///
             // Lit le fichier Icone du bouton (null si probleme => Bouton sera en texte)
-            var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOffIcon),
-                                            new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+            var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantDicteeButtonOffIcon),
+                                            new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
             Bitmap iconBmp = ico.ToBitmap();
             Button btnDictee = new Button
             {
                 Image = iconBmp,
                 ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
-                Text = (iconBmp == null ? aiMailerDicteeButtonText : string.Empty),
-                Width = aiMailerFctButtonIconSize + 8,
-                Height = aiMailerFctButtonIconSize + 8,
+                Text = (iconBmp == null ? iAssistantDicteeButtonText : string.Empty),
+                Width = iAssistantFctButtonIconSize + 8,
+                Height = iAssistantFctButtonIconSize + 8,
                 Font = btnFont,
                 FlatStyle = FlatStyle.Flat,
                 // On ancre à droite ET en bas
@@ -1029,27 +1032,27 @@ namespace AIMailer
             btnDictee.FlatAppearance.BorderSize = 0;
 
             // Quand la Form est initialisée, ClientSize est déjà défini
-            btnDictee.Left = this.ClientSize.Width - btnDictee.Width - aiMailerFctButtonRigthMargin;
-            btnDictee.Top = this.ClientSize.Height - btnDictee.Height - aiMailerFctButtonBottomMargin + 5;
+            btnDictee.Left = this.ClientSize.Width - btnDictee.Width - iAssistantFctButtonRigthMargin;
+            btnDictee.Top = this.ClientSize.Height - btnDictee.Height - iAssistantFctButtonBottomMargin + 5;
 
 
             btnDictee.Click += (s, e) => EditeurDemarrerDictee((Button)s);
             this.Controls.Add(btnDictee);
-            hoverTip.SetToolTip(btnDictee, aiMailerDicteeStartButtonTip);
+            hoverTip.SetToolTip(btnDictee, iAssistantDicteeStartButtonTip);
 
             ///
             /// Bouton d'envoi d'email             
             ///
-            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerCourrielButtonIcon),
-                                                new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantCourrielButtonIcon),
+                                                new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
             iconBmp = ico.ToBitmap();
             Button btnEnvoyer = new Button
             {
                 Image = iconBmp,
                 ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
-                Text = (iconBmp == null ? aiMailerCourrielButtonText : string.Empty),
-                Width = aiMailerFctButtonIconSize + 8,
-                Height = aiMailerFctButtonIconSize + 8,
+                Text = (iconBmp == null ? iAssistantCourrielButtonText : string.Empty),
+                Width = iAssistantFctButtonIconSize + 8,
+                Height = iAssistantFctButtonIconSize + 8,
                 Font = btnFont,
                 FlatStyle = FlatStyle.Flat,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right
@@ -1058,30 +1061,30 @@ namespace AIMailer
 
             // On le place juste à gauche de btnDictee
             btnEnvoyer.Left = btnDictee.Left - btnEnvoyer.Width - spacing;
-            btnEnvoyer.Top = this.ClientSize.Height - btnDictee.Height - aiMailerFctButtonBottomMargin + 5;  //btnDictee.Top;
+            btnEnvoyer.Top = this.ClientSize.Height - btnDictee.Height - iAssistantFctButtonBottomMargin + 5;  //btnDictee.Top;
 
             // Associez ici votre méthode d'envoi
             btnEnvoyer.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
-                var contenu = aiMailerEditor.Text;
+                var contenu = iAssistantEditor.Text;
                 OpenOutlookEmail(contenu);
             };
             this.Controls.Add(btnEnvoyer);
-            hoverTip.SetToolTip(btnEnvoyer, aiMailerCourrielConfigTitle);
+            hoverTip.SetToolTip(btnEnvoyer, iAssistantCourrielConfigTitle);
 
             ///
             /// Bouton d'envoi de Rendez-vous             
             ///
-            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerRdvButtonIcon),
-                                            new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantRdvButtonIcon),
+                                            new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
             iconBmp = ico.ToBitmap();
             Button btnRdv = new Button
             {
                 Image = iconBmp,
                 ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
-                Text = (iconBmp == null ? aiMailerRdvButtonText : string.Empty),
-                Width = aiMailerFctButtonIconSize + 8,
-                Height = aiMailerFctButtonIconSize + 8,
+                Text = (iconBmp == null ? iAssistantRdvButtonText : string.Empty),
+                Width = iAssistantFctButtonIconSize + 8,
+                Height = iAssistantFctButtonIconSize + 8,
                 Font = btnFont,
                 FlatStyle = FlatStyle.Flat,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right
@@ -1090,27 +1093,27 @@ namespace AIMailer
 
             // On le place juste à gauche de btnEnvoyer
             btnRdv.Left = btnEnvoyer.Left - btnRdv.Width - spacing;
-            btnRdv.Top = this.ClientSize.Height - btnRdv.Height - aiMailerFctButtonBottomMargin + 5;  //btnEnvoyer.Top;
+            btnRdv.Top = this.ClientSize.Height - btnRdv.Height - iAssistantFctButtonBottomMargin + 5;  //btnEnvoyer.Top;
 
             // Associez ici votre méthode d'envoi
             btnRdv.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
-                var contenu = aiMailerEditor.Text;
+                var contenu = iAssistantEditor.Text;
                 OpenOutlookRdv(contenu);
             };
             this.Controls.Add(btnRdv);
-            hoverTip.SetToolTip(btnRdv, aiMailerRdvButtonTip);
+            hoverTip.SetToolTip(btnRdv, iAssistantRdvButtonTip);
 
         }
 
         /// Initialisation du Timer pour regroupelmt du texte entré (fonction Undo)
         private void InitialiserInterfaceHitGroupTimer()
         {
-            aiMailerEditeurHitGroupTimer.Interval = aiMailerEditeurHitGroupTimeMax; // Set timer
-            aiMailerEditeurHitGroupTimer.Tick += (s, e) =>
+            iAssistantEditeurHitGroupTimer.Interval = iAssistantEditeurHitGroupTimeMax; // Set timer
+            iAssistantEditeurHitGroupTimer.Tick += (s, e) =>
             {
-                aiMailerEditeurHitGroupTimer.Stop();
-                aiMailerEditeurHitGroupActive = false;  // le prochain caractère redémarrera un nouveau groupe
+                iAssistantEditeurHitGroupTimer.Stop();
+                iAssistantEditeurHitGroupActive = false;  // le prochain caractère redémarrera un nouveau groupe
             };
 
         }
@@ -1131,18 +1134,18 @@ namespace AIMailer
             var now = Environment.TickCount;
 
             // Vérifie si le clic est rapproché du précédent (double/triple clic)
-            if (now - aiMailerEditorlastClickTime < SystemInformation.DoubleClickTime)
-                aiMailerEditorClickCount++;
+            if (now - iAssistantEditorlastClickTime < SystemInformation.DoubleClickTime)
+                iAssistantEditorClickCount++;
             else
-                aiMailerEditorClickCount = 1; // Trop espacé → on recommence le comptage
+                iAssistantEditorClickCount = 1; // Trop espacé → on recommence le comptage
 
-            aiMailerEditorlastClickTime = now;
+            iAssistantEditorlastClickTime = now;
 
             // Si triple clic détecté → sélectionner la phrase entière
-            if (aiMailerEditorClickCount == 3)
+            if (iAssistantEditorClickCount == 3)
             {
                 TripleClicSelectSentence((TextBox)sender);
-                aiMailerEditorClickCount = 0; // Réinitialisation après action
+                iAssistantEditorClickCount = 0; // Réinitialisation après action
             }
 
         }
@@ -1155,12 +1158,12 @@ namespace AIMailer
 
             // Recherche du début de la phrase (jusqu'à une ponctuation ou début de texte)
             int start = pos;
-            while (start > 0 && !aiMailerTripleClicSentenceCars.Contains(text[start - 1]))
+            while (start > 0 && !iAssistantTripleClicSentenceCars.Contains(text[start - 1]))
                 start--;
 
             // Recherche de la fin de la phrase (jusqu'à une ponctuation ou fin de texte)
             int end = pos;
-            while (end < text.Length && !aiMailerTripleClicSentenceCars.Contains(text[end]))
+            while (end < text.Length && !iAssistantTripleClicSentenceCars.Contains(text[end]))
                 end++;
 
             // Rajouter la ponctuation de fin de phrase
@@ -1179,18 +1182,18 @@ namespace AIMailer
         /// **********************************************************************
         private int InitialiserInterfaceMenu()
         {
-            Font fonte = new Font(this.Font.FontFamily, aiMailerEditeurMenuFontSize);
+            Font fonte = new Font(this.Font.FontFamily, iAssistantEditeurMenuFontSize);
 
             // Création de la barre de menu
-            MenuStrip menuStrip = new MenuStrip() { Font = fonte, BackColor = aiMailerEditeurMenuBackColor, ForeColor = aiMailerEditeurMenuForeColor };
+            MenuStrip menuStrip = new MenuStrip() { Font = fonte, BackColor = iAssistantEditeurMenuBackColor, ForeColor = iAssistantEditeurMenuForeColor };
 
             // Création du menu "Fichier"
-            ToolStripMenuItem menuFichier = new ToolStripMenuItem(aiMailerTextFileMenuTextLabel);
-            ToolStripMenuItem menuAnnuler = new ToolStripMenuItem(aiMailerTextEditorAnnulerMenuLabel);
-            ToolStripMenuItem menuRefaire = new ToolStripMenuItem(aiMailerTextEditorRefaireMenuLabel);
-            ToolStripMenuItem menuEffacer = new ToolStripMenuItem(aiMailerTextEditorEffacerMenuLabel);
-            ToolStripMenuItem menuOuvrir = new ToolStripMenuItem(aiMailerTextFileMenuTextOpenLabel);
-            ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem(aiMailerTextFileMenuTextSaveLabel);
+            ToolStripMenuItem menuFichier = new ToolStripMenuItem(iAssistantTextFileMenuTextLabel);
+            ToolStripMenuItem menuAnnuler = new ToolStripMenuItem(iAssistantTextEditorAnnulerMenuLabel);
+            ToolStripMenuItem menuRefaire = new ToolStripMenuItem(iAssistantTextEditorRefaireMenuLabel);
+            ToolStripMenuItem menuEffacer = new ToolStripMenuItem(iAssistantTextEditorEffacerMenuLabel);
+            ToolStripMenuItem menuOuvrir = new ToolStripMenuItem(iAssistantTextFileMenuTextOpenLabel);
+            ToolStripMenuItem menuEnregistrer = new ToolStripMenuItem(iAssistantTextFileMenuTextSaveLabel);
 
             menuAnnuler.Click += (s, e) => EditorUndoLastChange();
             menuRefaire.Click += (s, e) => EditorRedoLastChange();
@@ -1208,9 +1211,9 @@ namespace AIMailer
             menuStrip.Items.Add(menuFichier);
 
             // Création du menu "Config"
-            ToolStripMenuItem menuConfig = new ToolStripMenuItem(aiMailerConfigMenuTextLabel);
-            ToolStripMenuItem menuEditerConfig = new ToolStripMenuItem(aiMailerTextFileMenuConfigEditLabel);
-            ToolStripMenuItem menuActualiserConfig = new ToolStripMenuItem(aiMailerTextFileMenuRestartLabel);
+            ToolStripMenuItem menuConfig = new ToolStripMenuItem(iAssistantConfigMenuTextLabel);
+            ToolStripMenuItem menuEditerConfig = new ToolStripMenuItem(iAssistantTextFileMenuConfigEditLabel);
+            ToolStripMenuItem menuActualiserConfig = new ToolStripMenuItem(iAssistantTextFileMenuRestartLabel);
 
             menuEditerConfig.Click += MenuEditerConfig_Click;
             menuActualiserConfig.Click += MenuActualiserConfig_Click;
@@ -1225,10 +1228,10 @@ namespace AIMailer
             ToolStripLabel labelServiceModel = new ToolStripLabel
             {
                 Text = BuildServiceAndModelLabel(),
-                Font = new Font(this.Font.FontFamily, aiMailerEditeurMenuFontSize - 1),
-                ForeColor = aiMailerEditeurMenuForeColor,
+                Font = new Font(this.Font.FontFamily, iAssistantEditeurMenuFontSize - 1),
+                ForeColor = iAssistantEditeurMenuForeColor,
                 Alignment = ToolStripItemAlignment.Right,
-                Margin = new Padding(0, 0, aiMailerTextXOffset, 0)
+                Margin = new Padding(0, 0, iAssistantTextXOffset, 0)
             };
             menuStrip.Items.Add(labelServiceModel);
 
@@ -1240,11 +1243,11 @@ namespace AIMailer
             /// ***** Création du menu "Services et Modèles" ***********
             /// ********************************************************
             // ——— Menu "Modèles" unifié ———
-            ToolStripMenuItem menuService = new ToolStripMenuItem(aiMailerTextFileMenuModeleLabel);
-            if (aiMailerAIServices != null)
+            ToolStripMenuItem menuService = new ToolStripMenuItem(iAssistantTextFileMenuModeleLabel);
+            if (iAssistantAIServices != null)
             {
                 bool firstService = true;
-                foreach (var service in aiMailerAIServices.Where(s => s.Models != null))
+                foreach (var service in iAssistantAIServices.Where(s => s.Models != null))
                 {
                     if (service.Models == null) continue;
 
@@ -1260,8 +1263,8 @@ namespace AIMailer
                         item.Click += (s, e) =>
                         {
                             var tagData = (Tuple<AIService, AIModel>)((ToolStripMenuItem)s).Tag;
-                            aiMailerAIServiceActif = tagData.Item1;
-                            aiMailerAIModeleActif = tagData.Item2;
+                            iAssistantAIServiceActif = tagData.Item1;
+                            iAssistantAIModeleActif = tagData.Item2;
                             labelServiceModel.Text = BuildServiceAndModelLabel();
                         };
                         menuService.DropDownItems.Add(item);
@@ -1280,10 +1283,10 @@ namespace AIMailer
         /// ********************************************************
         private static string BuildServiceAndModelLabel()
         {
-            return string.Format(aiMailerStringMaskServiceAndModel,
-                (aiMailerAIServiceActif == null ? aiMailerServiceAbsent : aiMailerAIServiceActif.Name),
-                (aiMailerAIModeleActif == null ? aiMailerModeleAbsent : aiMailerAIModeleActif.Name),
-                (aiMailerAIModeleActif == null ? aiMailerModeleAbsent : aiMailerAIModeleActif.Type.ToString()));
+            return string.Format(iAssistantStringMaskServiceAndModel,
+                (iAssistantAIServiceActif == null ? iAssistantServiceAbsent : iAssistantAIServiceActif.Name),
+                (iAssistantAIModeleActif == null ? iAssistantModeleAbsent : iAssistantAIModeleActif.Name),
+                (iAssistantAIModeleActif == null ? iAssistantModeleAbsent : iAssistantAIModeleActif.Type.ToString()));
         }
 
         /// ********************************************************
@@ -1294,42 +1297,42 @@ namespace AIMailer
         private void MenuOuvrir_Click(object sender, EventArgs e)
         {
             // Choisir et Ouvrir le fichier 
-            OpenFileDialog openFileDialog = new OpenFileDialog { Filter = aiMailerTextFileMenuFilter };
+            OpenFileDialog openFileDialog = new OpenFileDialog { Filter = iAssistantTextFileMenuFilter };
             // Copier son contenu dans l'Editeur
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                aiMailerUndoStack.Push(aiMailerEditor.Text);
-                aiMailerEditor.Text = System.IO.File.ReadAllText(openFileDialog.FileName);
+                iAssistantUndoStack.Push(iAssistantEditor.Text);
+                iAssistantEditor.Text = System.IO.File.ReadAllText(openFileDialog.FileName);
             }
         }
 
         // Menu Fichier : Enregistrer le contenu de l'Editeur dans un fichier
         private void MenuEnregistrer_Click(object sender, EventArgs e)
         {
-            SaveFileDialog saveFileDialog = new SaveFileDialog { Filter = aiMailerTextFileMenuFilter };
+            SaveFileDialog saveFileDialog = new SaveFileDialog { Filter = iAssistantTextFileMenuFilter };
             if (saveFileDialog.ShowDialog() == DialogResult.OK)
-                System.IO.File.WriteAllText(saveFileDialog.FileName, aiMailerEditor.Text);
+                System.IO.File.WriteAllText(saveFileDialog.FileName, iAssistantEditor.Text);
         }
 
         // Menu Config : Editer le Fichier de Configuration avec un notepad externe
         private void MenuEditerConfig_Click(object sender, EventArgs e)
         {
             // Vérifie si le fichier existe 
-            string configFilePath = Path.Combine(WinForms.Application.StartupPath, aiMailerConfigFile);
+            string configFilePath = Path.Combine(WinForms.Application.StartupPath, iAssistantConfigFile);
             if (File.Exists(configFilePath))
             {
                 // Lancer le notepad externe avec le fichier
                 try
                 {
-                    System.Diagnostics.Process.Start(aiMailerNotepadExe, configFilePath);
+                    System.Diagnostics.Process.Start(iAssistantNotepadExe, configFilePath);
                 }
                 catch (SystemException ex)
                 {
-                    ErrorShow("ERROR_EDITOR_CFGFILEOPEN", ex.Message, aiMailerNotepadExe, WinForms.Application.StartupPath, aiMailerConfigFile);
+                    ErrorShow("ERROR_EDITOR_CFGFILEOPEN", ex.Message, iAssistantNotepadExe, WinForms.Application.StartupPath, iAssistantConfigFile);
                 }
             }
             // Erreur sur absence de fichier de configuration
-            else ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", WinForms.Application.StartupPath, aiMailerConfigFile);
+            else ErrorShow("ERROR_EDITOR_CFGFILEUNKNOWN", WinForms.Application.StartupPath, iAssistantConfigFile);
         }
 
         // Sauvegarde du texte dans le fichier AutoSave
@@ -1338,13 +1341,13 @@ namespace AIMailer
             bool okP = true;
             try
             {
-                File.WriteAllText(Path.Combine(WinForms.Application.StartupPath, aiMailerAutoSaveFile), aiMailerEditor.Text);
+                File.WriteAllText(Path.Combine(WinForms.Application.StartupPath, iAssistantAutoSaveFile), iAssistantEditor.Text);
             }
             catch (SystemException ex)
             {
                 okP = false;
                 if (signalerErreurP)
-                    ErrorShow("ERROR_EDITOR_AUTOSAVEERR", ex.Message, WinForms.Application.StartupPath, aiMailerAutoSaveFile);
+                    ErrorShow("ERROR_EDITOR_AUTOSAVEERR", ex.Message, WinForms.Application.StartupPath, iAssistantAutoSaveFile);
             }
             return okP;
         }
@@ -1353,13 +1356,13 @@ namespace AIMailer
         private void MenuActualiserConfig_Click(object sender, EventArgs e)
         {
             // Demander une confirmation de relance si l'éditeur contient du texte
-            if (!string.IsNullOrWhiteSpace(aiMailerEditor.Text))
+            if (!string.IsNullOrWhiteSpace(iAssistantEditor.Text))
             {
                 // Sauvegarde du contenu de l'éditeur dans un fichier local
                 if (!EditorAutoSave(false))
                 {
                     // Si impossible demande de confirmation à l'utilisateur
-                    DialogResult result = MessageBox.Show(aiMailerRestartAutoSaveWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    DialogResult result = MessageBox.Show(iAssistantRestartAutoSaveWarning, iAssistantRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                     if (result == DialogResult.No)
                         return; // Annuler le redémarrage si refus de l'utilisateur
                 }
@@ -1380,43 +1383,43 @@ namespace AIMailer
         private void EditeurDemarrerDictee(Button sourceButton = null)
         {
 
-            if (aiMailerIsDictating)
+            if (iAssistantIsDictating)
             {
-                aiMailerDictationInstance?.Stop();
-                aiMailerIsDictating = false;
+                iAssistantDictationInstance?.Stop();
+                iAssistantIsDictating = false;
                 if (sourceButton != null)
                 {
-                    var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOffIcon),
-                                new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+                    var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantDicteeButtonOffIcon),
+                                new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
                     Bitmap iconBmp = ico.ToBitmap();
                     sourceButton.Image = iconBmp;
-                    hoverTip.SetToolTip(sourceButton, aiMailerDicteeStartButtonTip);
+                    hoverTip.SetToolTip(sourceButton, iAssistantDicteeStartButtonTip);
                 }
                 return;
             }
 
-            aiMailerDictationInstance = new AIMailerVoiceDictation(texteReconnu =>
+            iAssistantDictationInstance = new IAssistantVoiceDictation(texteReconnu =>
             {
                 this.Invoke((MethodInvoker)(() =>
                 {
-                    aiMailerUndoStack.Push(aiMailerEditor.Text);
-                    aiMailerRedoStack.Clear();
+                    iAssistantUndoStack.Push(iAssistantEditor.Text);
+                    iAssistantRedoStack.Clear();
 
-                    int start = aiMailerEditor.SelectionStart;
-                    aiMailerEditor.Text = aiMailerEditor.Text.Insert(start, texteReconnu);
-                    aiMailerEditor.SelectionStart = start + texteReconnu.Length;
+                    int start = iAssistantEditor.SelectionStart;
+                    iAssistantEditor.Text = iAssistantEditor.Text.Insert(start, texteReconnu);
+                    iAssistantEditor.SelectionStart = start + texteReconnu.Length;
                 }));
             });
 
-            aiMailerDictationInstance.Start();
-            aiMailerIsDictating = true;
+            iAssistantDictationInstance.Start();
+            iAssistantIsDictating = true;
             if (sourceButton != null)
             {
-                var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOnIcon),
-                new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+                var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantDicteeButtonOnIcon),
+                new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
                 Bitmap iconBmp = ico.ToBitmap();
                 sourceButton.Image = iconBmp;
-                hoverTip.SetToolTip(sourceButton, aiMailerDicteeStopButtonTip);
+                hoverTip.SetToolTip(sourceButton, iAssistantDicteeStopButtonTip);
             }
         }
 
@@ -1433,14 +1436,14 @@ namespace AIMailer
         {
             string msgLabel;
 
-            if (!aiMailerErrorMsgs.TryGetValue(msgKey, out msgLabel))
+            if (!iAssistantErrorMsgs.TryGetValue(msgKey, out msgLabel))
                 msgLabel = string.Format(maskErrorMsgUnknown, msgKey);
 
             string FormatLevel(string level, string label)
             {
                 if (string.IsNullOrWhiteSpace(level)) return "";
-                string content = level.Length <= aiMailerErrorStringLenghtMax ? level : level.Substring(0, aiMailerErrorStringLenghtMax) + aiMailerStringMsgTrunc;
-                return "\n\n" + string.Format(aiMailerErrorLevelLabel, label) + content;
+                string content = level.Length <= iAssistantErrorStringLenghtMax ? level : level.Substring(0, iAssistantErrorStringLenghtMax) + iAssistantStringMsgTrunc;
+                return "\n\n" + string.Format(iAssistantErrorLevelLabel, label) + content;
             }
 
             string fullMessage = msgLabel
@@ -1452,7 +1455,7 @@ namespace AIMailer
 
             MessageBox.Show(
                 fullMessage,
-                aiMailerErrorShowTitle,
+                iAssistantErrorShowTitle,
                 MessageBoxButtons.OK,
                 MessageBoxIcon.Error
             );
@@ -1467,9 +1470,9 @@ namespace AIMailer
             // ---------- Fenêtre modale ----------
             using (Form dlg = new Form())
             {
-                var globalService = aiMailerAIServiceActif;
-                var globalModel = aiMailerAIModeleActif;
-                dlg.Text = $"{aiMailerActionCfgTitle}{action.Name}";
+                var globalService = iAssistantAIServiceActif;
+                var globalModel = iAssistantAIModeleActif;
+                dlg.Text = $"{iAssistantActionCfgTitle}{action.Name}";
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.StartPosition = FormStartPosition.CenterParent;
                 dlg.MaximizeBox = false;
@@ -1491,7 +1494,7 @@ namespace AIMailer
                 }
 
                 // Name ----------------------------------------------------------
-                AddLabel(aiMailerActionCfgName);
+                AddLabel(iAssistantActionCfgName);
                 TextBox txtName = new TextBox
                 {
                     Left = 140,
@@ -1503,7 +1506,7 @@ namespace AIMailer
                 y += txtName.Height + 15;
 
                 // Service / Modèle fusionné -------------------------
-                AddLabel(aiMailerActionCfgSvcModel);
+                AddLabel(iAssistantActionCfgSvcModel);
                 ComboBox cmbServiceModel = new ComboBox
                 {
                     Left = 140,
@@ -1520,13 +1523,13 @@ namespace AIMailer
                 // 1) “Default” → utilise le service/modèle global sélectionné en haut
                 entries.Add(new ServiceModelEntry
                 {
-                    Service = aiMailerAIServiceActif,      // ton champ global
-                    Model = aiMailerAIModeleActif,      // ton champ global
-                    Text = aiMailerActionCfgModelDefault
+                    Service = iAssistantAIServiceActif,      // ton champ global
+                    Model = iAssistantAIModeleActif,      // ton champ global
+                    Text = iAssistantActionCfgModelDefault
                 });
 
                 // 2) Tous les autres couples (Model (Service))
-                foreach (var s in aiMailerAIServices.Where(sv => sv.Models != null))
+                foreach (var s in iAssistantAIServices.Where(sv => sv.Models != null))
                     foreach (var m in s.Models)
                         entries.Add(new ServiceModelEntry
                         {
@@ -1555,7 +1558,7 @@ namespace AIMailer
                 cmbServiceModel.SelectedIndex = idx;
 
                 // Prompt --------------------------------------------------------
-                AddLabel(aiMailerActionCfgPrompt);
+                AddLabel(iAssistantActionCfgPrompt);
                 TextBox txtPrompt = new TextBox
                 {
                     Left = 140,
@@ -1570,7 +1573,7 @@ namespace AIMailer
                 y += txtPrompt.Height + 15;
 
                 // Température ---------------------------------------------------
-                AddLabel(aiMailerActionCfgTemperature);
+                AddLabel(iAssistantActionCfgTemperature);
                 NumericUpDown nudTemp = new NumericUpDown
                 {
                     Left = 140,
@@ -1588,7 +1591,7 @@ namespace AIMailer
                 // ---------- Boutons OK / Annuler ----------
                 Button btnOK = new Button
                 {
-                    Text = aiMailerOkButtonText,
+                    Text = iAssistantOkButtonText,
                     DialogResult = DialogResult.OK,
                     Left = dlg.ClientSize.Width - 200,
                     Width = 80,
@@ -1596,7 +1599,7 @@ namespace AIMailer
                 };
                 Button btnCancel = new Button
                 {
-                    Text = aiMailerCancelButtonText,
+                    Text = iAssistantCancelButtonText,
                     DialogResult = DialogResult.Cancel,
                     Left = btnOK.Right + 10,
                     Width = 80,
@@ -1634,7 +1637,7 @@ namespace AIMailer
                     SaveConfigurationFile();
                 }
                 this.Activate();          // remet la fenêtre principale devant
-                aiMailerEditor.Focus();   // place le curseur dans la zone de texte
+                iAssistantEditor.Focus();   // place le curseur dans la zone de texte
 
             }
         }
@@ -1648,33 +1651,33 @@ namespace AIMailer
             if (contextMenuItem)
             {
                 // Lorsque aucun text (Context menu only)
-                if (aiMailerEditor.Text == null || aiMailerEditor.Text == "")
+                if (iAssistantEditor.Text == null || iAssistantEditor.Text == "")
                 {
                     ErrorShow("ERROR_EDITOR_NOTEXT");
                     return;
                 }
             }
             // sinon Verifie s'il existe une sélection (appel de la Souris ou bouton)
-            else if (aiMailerEditor.SelectionLength == 0)
+            else if (iAssistantEditor.SelectionLength == 0)
                 return;
 
             // Si Palette existante → on la met devant et on sort
-            if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed)
+            if (iAssistantPaletteActions != null && !iAssistantPaletteActions.IsDisposed)
             {
-                aiMailerPaletteActions.BringToFront();
-                aiMailerEditor.Focus();
+                iAssistantPaletteActions.BringToFront();
+                iAssistantEditor.Focus();
                 return;
             }
 
             // ─── Mémorise la sélection courante ──────────────────────────
-            int selStart0 = aiMailerEditor.SelectionStart;
-            int selLength0 = aiMailerEditor.SelectionLength;
+            int selStart0 = iAssistantEditor.SelectionStart;
+            int selLength0 = iAssistantEditor.SelectionLength;
 
             // ─── Création de la palette ──────────────────────────────────
-            aiMailerPaletteActions = new Form
+            iAssistantPaletteActions = new Form
             {
                 FormBorderStyle = FormBorderStyle.None,       // plus de bordure ni de titre
-                Text = aiMailerPaletteActionsTitle,
+                Text = iAssistantPaletteActionsTitle,
                 MaximizeBox = false,                           // (par sécurité)
                 MinimizeBox = false,
                 ShowInTaskbar = false,
@@ -1690,18 +1693,18 @@ namespace AIMailer
             Point p = Cursor.Position;     // coordonnées écran de la souris
             Rectangle work = Screen.FromPoint(p).WorkingArea;
 
-            int posX = p.X + aiMailerActionPanelXOffset;
-            int posY = p.Y + aiMailerActionPanelYOffset;
+            int posX = p.X + iAssistantActionPanelXOffset;
+            int posY = p.Y + iAssistantActionPanelYOffset;
 
             // Si la palette dépasserait à droite, on la décale à gauche
-            if (posX + aiMailerPaletteActions.Width > work.Right)
-                posX = work.Right - aiMailerPaletteActions.Width;
+            if (posX + iAssistantPaletteActions.Width > work.Right)
+                posX = work.Right - iAssistantPaletteActions.Width;
 
             // Si elle dépasserait en bas, on la met au-dessus du pointeur
-            if (posY + aiMailerPaletteActions.Height > work.Bottom)
-                posY = p.Y - 3 * aiMailerActionPanelYOffset; // - aiMailerPaletteActions.Height;
+            if (posY + iAssistantPaletteActions.Height > work.Bottom)
+                posY = p.Y - 3 * iAssistantActionPanelYOffset; // - iAssistantPaletteActions.Height;
 
-            aiMailerPaletteActions.Location = new Point(posX, posY);
+            iAssistantPaletteActions.Location = new Point(posX, posY);
             /* ▲▲ FIN du nouveau bloc ▲▲ */
 
             // ─── Panneau et boutons ──────────────────────────────────
@@ -1713,16 +1716,16 @@ namespace AIMailer
                 AutoSize = true,
                 AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
-            aiMailerPaletteActions.Controls.Add(panel);
+            iAssistantPaletteActions.Controls.Add(panel);
             // Point position = Cursor.Position;
-            // aiMailerPaletteActions.Location = new Point(position.X, position.Y);
+            // iAssistantPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
 
-            aiMailerPaletteActions.Controls.Add(panel);
+            iAssistantPaletteActions.Controls.Add(panel);
 
-            int x = aiMailerButtonXOffset;
-            foreach (var action in aiMailerAIActions)
+            int x = iAssistantButtonXOffset;
+            foreach (var action in iAssistantAIActions)
             {
                 // Lit le fichier Icone du bouton (null si probleme => Bouton sera en texte)
                 Bitmap iconBmp = null;
@@ -1734,7 +1737,7 @@ namespace AIMailer
                                   : Path.Combine(WinForms.Application.StartupPath, action.Icon);
 
                     // ② using : l’objet Icon est IDisposable → libère la ressource GDI+
-                    using (var ico = new Icon(path, new Size(aiMailerIAButtonIconSize, aiMailerIAButtonIconSize)))
+                    using (var ico = new Icon(path, new Size(iAssistantIAButtonIconSize, iAssistantIAButtonIconSize)))
                     {
                         iconBmp = ico.ToBitmap();
                     }
@@ -1753,12 +1756,12 @@ namespace AIMailer
                     TextImageRelation = TextImageRelation.ImageBeforeText,
                     FlatStyle = FlatStyle.Standard, // ou System
 
-                    Size = new Size(aiMailerButtonWidth, aiMailerButtonHeight),
+                    Size = new Size(iAssistantButtonWidth, iAssistantButtonHeight),
                     Tag = action,
-                    Font = new Font(this.Font.FontFamily, aiMailerButtonTextFontSize),
+                    Font = new Font(this.Font.FontFamily, iAssistantButtonTextFontSize),
                     Location = new Point(x, buttonYOffset),
-                    BackColor = aiMailerButtonBackColor,
-                    ForeColor = aiMailerButtonForeColor
+                    BackColor = iAssistantButtonBackColor,
+                    ForeColor = iAssistantButtonForeColor
                 };
 
                 // Affichage par timer du Libellé du bouton au survol sans focus
@@ -1768,7 +1771,7 @@ namespace AIMailer
                     // point écran juste sous le bouton (centre X)
                     Point screen = b.PointToScreen(new Point(b.Width / 2, b.Height));
                     // on convertit pour le ToolTip : coordonnées dans LA fenêtre propriétaire
-                    Point local = aiMailerPaletteActions.PointToClient(screen);
+                    Point local = iAssistantPaletteActions.PointToClient(screen);
                     /* ← La seule ligne nécessaire pour un tip “flottant” */
                     hoverTip.SetToolTip(btn, action.Name);
                 };
@@ -1779,7 +1782,7 @@ namespace AIMailer
                     {
                         try
                         {
-                            hoverTip.Hide(aiMailerPaletteActions);
+                            hoverTip.Hide(iAssistantPaletteActions);
                         }
                         catch (SystemException)
                         {
@@ -1793,22 +1796,22 @@ namespace AIMailer
 
                 // menu contextuel « Configuration »
                 ContextMenu ctx = new ContextMenu();
-                ctx.MenuItems.Add(new MenuItem(aiMailerActionPanelButtonCfgMenuLabel,
+                ctx.MenuItems.Add(new MenuItem(iAssistantActionPanelButtonCfgMenuLabel,
                     (_, __) => AfficherPanneauConfig(action)));
                 btn.ContextMenu = ctx;
 
                 panel.Controls.Add(btn);
-                x += aiMailerButtonWidth + aiMailerButtonXSpace;
+                x += iAssistantButtonWidth + iAssistantButtonXSpace;
             }
-            panel.Size = new Size(x, aiMailerButtonHeight + 2 * buttonYOffset);
-            aiMailerPaletteActions.ClientSize = panel.Size;
+            panel.Size = new Size(x, iAssistantButtonHeight + 2 * buttonYOffset);
+            iAssistantPaletteActions.ClientSize = panel.Size;
 
             // ─── Gestion du focus après affichage ────────────────────────
-            aiMailerPaletteActions.Shown += (_, __) =>
+            iAssistantPaletteActions.Shown += (_, __) =>
             {
                 // Rend la main à la fenêtre principale puis à l’éditeur
                 this.Activate();
-                aiMailerEditor.Focus();
+                iAssistantEditor.Focus();
             };
 
             // ─── Fermeture auto si la sélection change ───────────────────
@@ -1818,22 +1821,22 @@ namespace AIMailer
             void checkSelectionChange()
             {
                 // On ferme seulement si la sélection disparaît complètement
-                if (aiMailerPaletteActions != null && !aiMailerPaletteActions.IsDisposed && aiMailerEditor.SelectionLength == 0)
-                    aiMailerPaletteActions.Close();
+                if (iAssistantPaletteActions != null && !iAssistantPaletteActions.IsDisposed && iAssistantEditor.SelectionLength == 0)
+                    iAssistantPaletteActions.Close();
             }
 
             keyHandler = (_, __) => checkSelectionChange();
             mouseHandler = (_, __) => checkSelectionChange();
 
-            aiMailerEditor.KeyUp += keyHandler;
-            aiMailerEditor.MouseUp += mouseHandler;
+            iAssistantEditor.KeyUp += keyHandler;
+            iAssistantEditor.MouseUp += mouseHandler;
 
             // Nettoyage : détache les écouteurs quand la palette se ferme
-            aiMailerPaletteActions.FormClosed += (_, __) =>
+            iAssistantPaletteActions.FormClosed += (_, __) =>
             {
-                aiMailerPaletteActions = null;
-                aiMailerEditor.KeyUp -= keyHandler;
-                aiMailerEditor.MouseUp -= mouseHandler;
+                iAssistantPaletteActions = null;
+                iAssistantEditor.KeyUp -= keyHandler;
+                iAssistantEditor.MouseUp -= mouseHandler;
             };
 
             // ─── Petit utilitaire pour redonner immédiatement le focus ───
@@ -1841,20 +1844,20 @@ namespace AIMailer
                 => BeginInvoke((MethodInvoker)(() =>
                 {
                     this.Activate();          // remet la fenêtre principale devant
-                    aiMailerEditor.Focus();   // et place le curseur dans le texte
+                    iAssistantEditor.Focus();   // et place le curseur dans le texte
                 }));
 
             // ▸ Quand on **déplace** la palette
-            aiMailerPaletteActions.Move += (_, __) => GiveBackFocus();
+            iAssistantPaletteActions.Move += (_, __) => GiveBackFocus();
 
             // ▸ Quand on **clique** n’importe où dans la palette (hors boutons)
-            aiMailerPaletteActions.Click += (_, __) => GiveBackFocus();
+            iAssistantPaletteActions.Click += (_, __) => GiveBackFocus();
 
             // ▸ Quand on clique sur le panneau translucide
             panel.Click += (_, __) => GiveBackFocus();
 
-            aiMailerPaletteActions.Show();   // non modale
-            aiMailerEditor.Focus();
+            iAssistantPaletteActions.Show();   // non modale
+            iAssistantEditor.Focus();
         }
 
         /// <summary>
@@ -1873,7 +1876,7 @@ namespace AIMailer
                 // Préremplir les champs
                 //mail.To = "exemple@edu.devinci.fr";
                 //mail.CC = "copie@devinci.fr";
-                mail.Subject = aiMailerEmailLastSubject;
+                mail.Subject = iAssistantEmailLastSubject;
                 mail.Body = body;
 
                 // Ouvre l'email (l'utilisateur pourra le modifier avant d’envoyer)
@@ -1909,7 +1912,7 @@ namespace AIMailer
                     outlookApp.CreateItem(Outlook.OlItemType.olAppointmentItem);
 
                 // Remplit les informations de base
-                rdv.Subject = aiMailerName;
+                rdv.Subject = iAssistantName;
                 rdv.Start = DateTime.Now.AddHours(1);      // Heure de début
                 rdv.End = DateTime.Now.AddHours(2);        // Heure de fin
                 rdv.Location = "Salle Zoom / Bureau";
@@ -1980,7 +1983,7 @@ namespace AIMailer
             using (var dlg = new WinForms.Form())
             {
                 // --- initialisation du dialogue (comme avant) ---
-                dlg.Text = aiMailerCourrielConfigTitle;
+                dlg.Text = iAssistantCourrielConfigTitle;
                 dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
                 dlg.StartPosition = FormStartPosition.CenterParent;
                 dlg.AutoSize = true;
@@ -1989,21 +1992,21 @@ namespace AIMailer
                 dlg.Padding = new Padding(10);
 
                 // Labels + TextBoxes
-                var lblTo = new Label { Text = aiMailerCourrielConfigTo, AutoSize = true, Left = 10, Top = 15 };
-                var txtTo = new TextBox { Left = 80, Width = 300, Top = lblTo.Top - 3, Text = aiMailerEmailLastTo };
-                var lblCc = new Label { Text = aiMailerCourrielConfigCc, AutoSize = true, Left = 10, Top = 45 };
-                var txtCc = new TextBox { Left = 80, Width = 300, Top = lblCc.Top - 3, Text = aiMailerEmailLastCc };
-                var lblSubject = new Label { Text = aiMailerCourrielConfigObject, AutoSize = true, Left = 10, Top = 75 };
-                var txtSubject = new TextBox { Left = 80, Width = 300, Top = lblSubject.Top - 3, Text = aiMailerEmailLastSubject };
+                var lblTo = new Label { Text = iAssistantCourrielConfigTo, AutoSize = true, Left = 10, Top = 15 };
+                var txtTo = new TextBox { Left = 80, Width = 300, Top = lblTo.Top - 3, Text = iAssistantEmailLastTo };
+                var lblCc = new Label { Text = iAssistantCourrielConfigCc, AutoSize = true, Left = 10, Top = 45 };
+                var txtCc = new TextBox { Left = 80, Width = 300, Top = lblCc.Top - 3, Text = iAssistantEmailLastCc };
+                var lblSubject = new Label { Text = iAssistantCourrielConfigObject, AutoSize = true, Left = 10, Top = 75 };
+                var txtSubject = new TextBox { Left = 80, Width = 300, Top = lblSubject.Top - 3, Text = iAssistantEmailLastSubject };
 
                 // Checkbox brouillon
                 var chkDraft = new CheckBox
                 {
-                    Text = aiMailerCourrielConfigDraft,
+                    Text = iAssistantCourrielConfigDraft,
                     Left = 80,
                     Top = 105,
                     AutoSize = true,
-                    Checked = aiMailerEmailLastDraft
+                    Checked = iAssistantEmailLastDraft
                 };
 
                 // Boutons Ok / Annuler centrés
@@ -2051,10 +2054,10 @@ namespace AIMailer
                     var draft = chkDraft.Checked;
 
                     // Mémorisation
-                    aiMailerEmailLastTo = to;
-                    aiMailerEmailLastCc = cc;
-                    aiMailerEmailLastSubject = subject;
-                    aiMailerEmailLastDraft = draft;
+                    iAssistantEmailLastTo = to;
+                    iAssistantEmailLastCc = cc;
+                    iAssistantEmailLastSubject = subject;
+                    iAssistantEmailLastDraft = draft;
 
                     // Envoi ou brouillon
                     if (draft)
@@ -2111,7 +2114,7 @@ namespace AIMailer
         /// Remplacement Regex avec timeout maximal
         /// </summary>
 
-        private static string RegexSafeReplace(string input, string pattern, string replacement, int timeoutMs = aiMailerRegexTimeoutMsec)
+        private static string RegexSafeReplace(string input, string pattern, string replacement, int timeoutMs = iAssistantRegexTimeoutMsec)
         {
             try
             {
@@ -2207,7 +2210,7 @@ namespace AIMailer
             SendMessage(txt.Handle, EM_SETMARGINS, wParam, lParam);
         }
 
-        [DllImport(aiMailerUser32dll, CharSet = CharSet.Auto)]
+        [DllImport(iAssistantUser32dll, CharSet = CharSet.Auto)]
         private static extern IntPtr SendMessage(
             IntPtr hWnd,
             int msg,
@@ -2228,8 +2231,8 @@ namespace AIMailer
         {
             list.AddLast(value ?? string.Empty);
 
-            // tronque l'historique au-delà de aiMailerUndoStackMaxNb
-            if (list.Count > AIMailer.aiMailerUndoStackMaxItems)
+            // tronque l'historique au-delà de iAssistantUndoStackMaxNb
+            if (list.Count > IAssistant.iAssistantUndoStackMaxItems)
                 list.RemoveFirst();
         }
 

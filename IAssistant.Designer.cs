@@ -1,6 +1,6 @@
-﻿namespace AIMailer
+﻿namespace IAssistant
 {
-    partial class AIMailer
+    partial class IAssistant
     {
         /// <summary>
         /// Required designer variable.
@@ -28,18 +28,19 @@
         /// </summary>
         private void InitializeComponent()
         {
-            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(AIMailer));
+            System.ComponentModel.ComponentResourceManager resources = new System.ComponentModel.ComponentResourceManager(typeof(IAssistant));
             this.SuspendLayout();
             // 
-            // AIMailer
+            // IAssistant
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(876, 555);
+            this.ClientSize = new System.Drawing.Size(584, 361);
             this.Icon = ((System.Drawing.Icon)(resources.GetObject("$this.Icon")));
-            this.Name = "AIMailer";
-            this.Text = "AIMailer";
-            this.Load += new System.EventHandler(this.AIMailer_Load);
+            this.Margin = new System.Windows.Forms.Padding(2, 2, 2, 2);
+            this.Name = "IAssistant";
+            this.Text = "IAssistant";
+            this.Load += new System.EventHandler(this.IAssistant_Load);
             this.ResumeLayout(false);
 
         }
