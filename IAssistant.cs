@@ -30,7 +30,6 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
-using Outlook = Microsoft.Office.Interop.Outlook;   // Envoi d'emails à Outlook
 using WinForms = System.Windows.Forms;
 
 /* Context Prompt pour mémo 
@@ -101,16 +100,17 @@ namespace IAssistant
         private const string iAssistantDicteeButtonOnIcon = "RecordOn32.ico";            // Icon Bouton Dictee à l'enregistrement
         private const string iAssistantDicteeButtonRecordText = "⏹";                    // Label Bouton Dictee à l'enregistrement
         private const string iAssistantRdvButtonIcon = "Rendezvous32.ico";               // Icon Bouton Envoi Rdv    
-        private const string iAssistantRdvButtonText = "📅";                            // Label Bouton Envoi Rdv 
+        private const string iAssistantRdvButtonText = "📅";                             // Label Bouton Envoi Rdv 
         private const string iAssistantCourrielButtonIcon = "SendEmail32.ico";           // Label Bouton Envoi email
         private const string iAssistantCourrielButtonText = "📨";                        // Label Bouton Envoi email
-        private const string iAssistantCourrielConfigTitle = "Open Outlook Email"; // Label Configuration Email - Titre
+        private const string iAssistantCourrielConfigTitle = "Open Outlook Email";       // Label Configuration Email - Titre
         private const string iAssistantCourrielConfigObject = "Object:";                 // Label Configuration Email - Object
-        private const string iAssistantCourrielConfigLastObject = "iAssistant";            // Label Configuration Email - Object
-        private const bool iAssistantCourrielConfigLastDraft = true;                     // Label Configuration Email - Draft
-        private const string iAssistantDicteeStartButtonTip = "Start Vocal dictation";    // Tip boutton Dictee vocale
-        private const string iAssistantDicteeStopButtonTip = "Stop Vocal dictation";      // Tip boutton Dictee vocale
-        private const string iAssistantRdvButtonTip = "Open Outlook Meeting";   // Tip boutton Envoi Rdv 
+        private const string iAssistantOutlookEmailSubjectDefault = "A définir";         // Label Configuration Email - Subject Email
+        private const string iAssistantOutlookMeetingSubjectDefault = "A définir";       // Label Configuration Email - Subject RDV
+        private const string iAssistantOutlookMeetingLocationDefault = "A définir";      // Label Configuration Email - Location
+        private const string iAssistantDicteeStartButtonTip = "Start Vocal dictation";   // Tip boutton Dictee vocale
+        private const string iAssistantDicteeStopButtonTip = "Stop Vocal dictation";     // Tip boutton Dictee vocale
+        private const string iAssistantRdvButtonTip = "Open Outlook Meeting";            // Tip boutton Envoi Rdv 
 
         internal const int iAssistantUndoStackMaxItems = 99;          // Pas plus de 99 Undos
         private const int iAssistantPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
@@ -203,10 +203,11 @@ namespace IAssistant
         private bool iAssistantEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
         private IAssistantVoiceDictation iAssistantDictationInstance = null;
         private bool iAssistantIsDictating = false;
-        public static float iAssistantDictationConfidence = iAssistantDictationDefaultConfidence;
-        private int iAssistantEditeurDefaultTextFontSize = iAssistantDefaultTextFontSize;     // Taille de police Editeur initiale 
-        private string iAssistantEmailLastSubject = iAssistantCourrielConfigLastObject;       // Email : dernier Subject
-        private bool iAssistantEmailLastDraft = iAssistantCourrielConfigLastDraft;            // Email : dernier Draft
+        public static float iAssistantDictationConfidence = iAssistantDictationDefaultConfidence;   // Voice Dictation Confidence (0.0 - 1.0)
+        private int iAssistantEditeurDefaultTextFontSize = iAssistantDefaultTextFontSize;           // Taille de police Editeur initiale 
+        private string iAssistantOutlookEmailSubject = iAssistantOutlookEmailSubjectDefault;        // Outlook : Subject Email
+        private string iAssistantOutlookMeetingSubject = iAssistantOutlookMeetingSubjectDefault;    // Outlook : Subject Rdv
+        private string iAssistantOutlookMeetingLocation = iAssistantOutlookMeetingLocationDefault;  // Outlook : Location
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -279,15 +280,14 @@ namespace IAssistant
         // Configuration interne Application
         private class AppConfiguration
         {
-            public EmailConfiguration Email { get; set; }
+            public OutlookConfiguration Outlook { get; set; }
             public EditorConfiguration Editor { get; set; }
         }
-        private class EmailConfiguration
+        private class OutlookConfiguration
         {
-            public string LastTo { get; set; }
-            public string LastCc { get; set; }
-            public string LastSubject { get; set; }
-            public bool LastDraft { get; set; }
+            public string EmailSubject { get; set; }
+            public string MeetingSubject { get; set; }
+            public string MeetingLocation { get; set; }
         }
 
         private class EditorConfiguration
@@ -686,9 +686,10 @@ namespace IAssistant
 
                 // Parsing de la configuration interne
                 iAssistantAppConfiguration = config.Configuration ?? new AppConfiguration();
-                EmailConfiguration emailCfg = iAssistantAppConfiguration.Email;
-                iAssistantEmailLastSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastSubject)) ? iAssistantCourrielConfigLastObject : emailCfg.LastSubject;
-                iAssistantEmailLastDraft = emailCfg.LastDraft;
+                OutlookConfiguration emailCfg = iAssistantAppConfiguration.Outlook;
+                iAssistantOutlookEmailSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.EmailSubject)) ? iAssistantOutlookEmailSubjectDefault : emailCfg.EmailSubject;
+                iAssistantOutlookMeetingSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.MeetingSubject)) ? iAssistantOutlookMeetingSubjectDefault : emailCfg.MeetingSubject;
+                iAssistantOutlookMeetingLocation = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.MeetingLocation)) ? iAssistantOutlookMeetingLocationDefault : emailCfg.MeetingLocation;
 
                 EditorConfiguration editorCfg = iAssistantAppConfiguration.Editor;
                 iAssistantEditeurDefaultTextFontSize = (editorCfg == null)
@@ -1081,7 +1082,7 @@ namespace IAssistant
             btnEnvoyer.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
                 var contenu = iAssistantEditor.Text;
-                IAssistantOutlook.OpenEmail(contenu,iAssistantEmailLastSubject);
+                IAssistantOutlook.OpenEmail(contenu, iAssistantOutlookEmailSubject);
             };
             this.Controls.Add(btnEnvoyer);
             hoverTip.SetToolTip(btnEnvoyer, iAssistantCourrielConfigTitle);
@@ -1113,14 +1114,14 @@ namespace IAssistant
             btnRdv.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
                 var contenu = iAssistantEditor.Text;
-                OpenOutlookRdv(contenu);
+                IAssistantOutlook.OpenRdv(contenu, iAssistantOutlookMeetingSubject, iAssistantOutlookMeetingLocation);
             };
             this.Controls.Add(btnRdv);
             hoverTip.SetToolTip(btnRdv, iAssistantRdvButtonTip);
 
         }
 
-        /// Initialisation du Timer pour regroupelmt du texte entré (fonction Undo)
+        /// Initialisation du Timer pour regroupement du texte entré (fonction Undo)
         private void InitialiserInterfaceHitGroupTimer()
         {
             iAssistantEditeurHitGroupTimer.Interval = iAssistantEditeurHitGroupTimeMax; // Set timer
@@ -1875,256 +1876,6 @@ namespace IAssistant
         }
 
         /// <summary>
-        /// Envoi d'email via Outlook
-        /// </summary>
-        private void OpenOutlookEmail(string body)
-        {
-            try
-            {
-                // Récupère une instance d'Outlook en cours (nécessaire qu'il soit lancé)
-                Outlook.Application outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
-
-                // Crée un nouvel email
-                Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
-
-                // Préremplir les champs
-                //mail.To = "exemple@edu.devinci.fr";
-                //mail.CC = "copie@devinci.fr";
-                mail.Subject = iAssistantEmailLastSubject;
-                mail.Body = body;
-
-                // Ouvre l'email (l'utilisateur pourra le modifier avant d’envoyer)
-                mail.Display(true);  // true = modal
-            }
-            catch (COMException)
-            {
-                // Error Outlook not running
-                ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
-                return;
-            }
-            catch (SystemException ex)
-            {
-                // Error while calling Outlook 
-                ErrorShow("ERROR_EDITOR_OUTLOOKSAVEDRAFT", ex.Message);
-                return;
-            }
-        }
-
-
-        ///
-        /// Fenetre d'ouverture de Rdv Outlook
-        /// 
-        private void OpenOutlookRdv(string body)
-        {
-            try
-            {
-                // Récupère l'instance Outlook en cours
-                Outlook.Application outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
-
-                // Crée un nouveau rendez-vous
-                Outlook.AppointmentItem rdv = (Outlook.AppointmentItem)
-                    outlookApp.CreateItem(Outlook.OlItemType.olAppointmentItem);
-
-                // Remplit les informations de base
-                rdv.Subject = iAssistantName;
-                rdv.Start = DateTime.Now.AddHours(1);      // Heure de début
-                rdv.End = DateTime.Now.AddHours(2);        // Heure de fin
-                rdv.Location = "Salle Zoom / Bureau";
-                rdv.Body = body;
-                rdv.ReminderMinutesBeforeStart = 15;
-                rdv.BusyStatus = Outlook.OlBusyStatus.olBusy;
-
-                // Affiche le rendez-vous sans l'enregistrer automatiquement
-                rdv.Display(true); // true = modal, false = non-modal
-            }
-            catch (COMException)
-            {
-                // Error Outlook not running
-                ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
-                return;
-            }
-            catch (Exception ex)
-            {
-                // Error while calling Outlook 
-                ErrorShow("ERROR_EDITOR_OUTLOOKSAVEDRAFT", ex.Message);
-                return;
-            }
-        }
-        /****************************************************************************
-        public static class AiMailerEmailSender
-        {
-            /// Envoi d'email via Outlook : Enregistrement comme Brouillon
-            public static void SendToOutookAsDraft(string to, string subject, string body)
-            {
-                try
-                {
-                    // Tente d’attacher à une instance existante d’Outlook
-                    Outlook.Application outlookApp;
-                    try
-                    {
-                        outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
-                    }
-                    catch (COMException)
-                    {
-                        // Error Outlook not running
-                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
-                        return;
-                    }
-
-                    Outlook.MailItem mail = (Outlook.MailItem)
-                        outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
-
-                    mail.To = to;
-                    mail.Subject = subject;
-                    mail.Body = body;
-
-                    mail.Save(); // Dépose dans le dossier Brouillons
-                }
-                catch (SystemException ex)
-                {
-                    // Error while calling Outlook 
-                    ErrorShow("ERROR_EDITOR_OUTLOOKSAVEDRAFT", ex.Message);
-                    return;
-                }
-            }
-        }
-
-                ///
-        /// Fenetre de configuration d'envoi d'emails à Outlook
-        /// 
-        private void ShowSendEmailToOutlookDialog(string body)
-        {
-            using (var dlg = new WinForms.Form())
-            {
-                // --- initialisation du dialogue (comme avant) ---
-                dlg.Text = iAssistantCourrielConfigTitle;
-                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dlg.StartPosition = FormStartPosition.CenterParent;
-                dlg.AutoSize = true;
-                dlg.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-                dlg.Font = this.Font;
-                dlg.Padding = new Padding(10);
-
-                // Labels + TextBoxes
-                var lblTo = new Label { Text = iAssistantCourrielConfigTo, AutoSize = true, Left = 10, Top = 15 };
-                var txtTo = new TextBox { Left = 80, Width = 300, Top = lblTo.Top - 3, Text = iAssistantEmailLastTo };
-                var lblCc = new Label { Text = iAssistantCourrielConfigCc, AutoSize = true, Left = 10, Top = 45 };
-                var txtCc = new TextBox { Left = 80, Width = 300, Top = lblCc.Top - 3, Text = iAssistantEmailLastCc };
-                var lblSubject = new Label { Text = iAssistantCourrielConfigObject, AutoSize = true, Left = 10, Top = 75 };
-                var txtSubject = new TextBox { Left = 80, Width = 300, Top = lblSubject.Top - 3, Text = iAssistantEmailLastSubject };
-
-                // Checkbox brouillon
-                var chkDraft = new CheckBox
-                {
-                    Text = iAssistantCourrielConfigDraft,
-                    Left = 80,
-                    Top = 105,
-                    AutoSize = true,
-                    Checked = iAssistantEmailLastDraft
-                };
-
-                // Boutons Ok / Annuler centrés
-                int spacing = 10;
-                int totalWidth = 80 + spacing + 80 ; // btnOk + btnCancel
-                int startX = (dlg.ClientSize.Width - totalWidth) / 2 + 100;
-                int btnY = 140;
-
-                var btnOk = new Button
-                {
-                    Text = "OK",
-                    DialogResult = DialogResult.OK,
-                    Width = 80,
-                    Left = startX,
-                    Top = btnY
-                };
-
-                var btnCancel = new Button
-                {
-                    Text = "Annuler",
-                    DialogResult = DialogResult.Cancel,
-                    Width = 80,
-                    Left = startX + btnOk.Width + spacing,
-                    Top = btnY
-                };
-
-                dlg.Controls.AddRange(new Control[]
-                {
-                    lblTo, txtTo,
-                    lblCc, txtCc,
-                    lblSubject, txtSubject,
-                    chkDraft,
-                    btnOk, btnCancel
-                });
-
-                dlg.AcceptButton = btnOk;
-                dlg.CancelButton = btnCancel;
-
-                if (dlg.ShowDialog(this) == DialogResult.OK)
-                {
-                    // Récupération
-                    var to = txtTo.Text.Trim();
-                    var cc = txtCc.Text.Trim();
-                    var subject = txtSubject.Text.Trim();
-                    var draft = chkDraft.Checked;
-
-                    // Mémorisation
-                    iAssistantEmailLastTo = to;
-                    iAssistantEmailLastCc = cc;
-                    iAssistantEmailLastSubject = subject;
-                    iAssistantEmailLastDraft = draft;
-
-                    // Envoi ou brouillon
-                    if (draft)
-                        AiMailerEmailSender.SendToOutookAsDraft(to, subject, body);
-                    else
-                        AiMailerEmailSender.SendToOutookDirect(to, cc, subject, body);
-                }
-            }
-
-                    /// Envoi d'email via Outlook : Envoi direct
-            public static void SendToOutookDirect(string to, string cc, string subject, string body)
-            {
-                try
-                {
-                    // Tente de récupérer une instance déjà lancée d'Outlook
-                    Outlook.Application outlookApp;
-                    try
-                    {
-                        outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
-                    }
-                    catch (COMException)
-                    {
-                        /// Outlook not running
-                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
-                        return;
-                    }
-
-                    Outlook.MailItem mail = (Outlook.MailItem)
-                        outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
-
-                    mail.To = to;
-                    if (!string.IsNullOrWhiteSpace(cc))
-                        mail.CC = cc;
-
-                    mail.Subject = subject;
-                    mail.Body = body;
-
-                    // Pour un envoi HTML, décommentez si nécessaire :
-                    // mail.HTMLBody = bodyHtml;
-                    // mail.BodyFormat = Outlook.OlBodyFormat.olFormatHTML;
-
-                    mail.Send(); // Envoi immédiat
-                }
-                catch (SystemException ex)
-                {
-                    // Error while calling Outlook 
-                    ErrorShow("ERROR_EDITOR_OUTLOOKSENDDIRECT", ex.Message);
-                    return;
-                }
-            }
-
-        *****************************************************************/
-        /// <summary>
         /// Remplacement Regex avec timeout maximal
         /// </summary>
 
@@ -2141,7 +1892,6 @@ namespace IAssistant
                 return input;
             }
         }
-
 
         /// <summary>
         /// Barre indéterminée inspirée Material Design :
