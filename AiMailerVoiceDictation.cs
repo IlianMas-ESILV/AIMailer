@@ -4,12 +4,12 @@ using System.Windows.Forms;
 
 namespace AIMailer
 {
-    public class AiMailerVoiceDictation
+    public class AIMailerVoiceDictation
     {
         private SpeechRecognitionEngine recognizer;
         private Action<string> callback;
 
-        public AiMailerVoiceDictation(Action<string> callback)
+        public AIMailerVoiceDictation(Action<string> callback)
         {
             this.callback = callback;
             recognizer = new SpeechRecognitionEngine(new System.Globalization.CultureInfo("fr-FR"));

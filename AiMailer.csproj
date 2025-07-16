@@ -6,8 +6,8 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProjectGuid>{7CEFA6D8-07F5-45BF-A2AC-5F37549A1C4F}</ProjectGuid>
     <OutputType>WinExe</OutputType>
-    <RootNamespace>AiMailer</RootNamespace>
-    <AssemblyName>AiMailer</AssemblyName>
+    <RootNamespace>AIMailer</RootNamespace>
+    <AssemblyName>AIMailer</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -107,6 +107,7 @@
     <Compile Include="Properties\Resources.Designer.cs">
       <AutoGen>True</AutoGen>
       <DependentUpon>Resources.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
     </Compile>
     <None Include="packages.config" />
     <None Include="Properties\Settings.settings">

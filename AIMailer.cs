@@ -21,7 +21,6 @@ using SystemException = System.Exception;
 using Timer = System.Windows.Forms.Timer;           // Alias explicite Timer (regroupement de cars undo/redo)
 using WinForms = System.Windows.Forms;
 
-
 /* Context Prompt pour mémo 
 Tu es un assistant IA aussi bien francophone qu'anglophone expert en rédaction, traduction et synthèse de texte. 
 Tu réponds toujours en français clair et précis, sans jamais expliquer tes actions, sauf si demandé. 
@@ -57,6 +56,7 @@ namespace AIMailer
         private const string aiMailerTextEditorCollerMenuLabel = "Paste (Ctrl+V)";
         private const string aiMailerTextEditorSelectionnerMenuLabel = "Select All (Ctrl+A)";
         private const string aiMailerTextFontSliderLabel = "Font : ";
+        private const string aiMailerTextFontSliderTip = "Change Editor Text Size";      // Hovertip Clider Font Size
         private const string aiMailerTextFileMenuTextLabel = "Text";
         private const string aiMailerConfigMenuTextLabel = "Configuration";
         private const string aiMailerTextFileMenuModeleLabel = "Models";
@@ -86,11 +86,13 @@ namespace AIMailer
         private const int aiMailerFctButtonIconSize = 32;
         private const string aiMailerDicteeButtonOffIcon = "RecordOff32.ico";          // Icon Bouton Dictee à l'arret
         private const string aiMailerDicteeButtonText = "🎤";                          // Label Bouton Dictee à l'arret
-        private const string aiMailerDicteeButtonOnIcon = "RecordOn32.ico";            // Label Bouton Dictee à l'enregistrement
+        private const string aiMailerDicteeButtonOnIcon = "RecordOn32.ico";            // Icon Bouton Dictee à l'enregistrement
         private const string aiMailerDicteeButtonRecordText = "⏹";                    // Label Bouton Dictee à l'enregistrement
+        private const string aiMailerRdvButtonIcon = "Rendezvous32.ico";               // Icon Bouton Envoi Rdv    
+        private const string aiMailerRdvButtonText = "📅";                            // Label Bouton Envoi Rdv 
         private const string aiMailerCourrielButtonIcon = "SendEmail32.ico";           // Label Bouton Envoi email
         private const string aiMailerCourrielButtonText = "📨";                        // Label Bouton Envoi email
-        private const string aiMailerCourrielConfigTitle = "Send Email to Outlook..."; // Label Configuration Email - Titre
+        private const string aiMailerCourrielConfigTitle = "Open Outlook Email"; // Label Configuration Email - Titre
         private const string aiMailerCourrielConfigTo = "To:";                         // Label Configuration Email - To
         private const string aiMailerCourrielConfigCc = "CC:";                         // Label Configuration Email - CC
         private const string aiMailerCourrielConfigObject = "Object:";                 // Label Configuration Email - Object
@@ -99,6 +101,9 @@ namespace AIMailer
         private const string aiMailerCourrielConfigLastCc = "";                        // Label Configuration Email - CC
         private const string aiMailerCourrielConfigLastObject = "AIMailer";            // Label Configuration Email - Object
         private const bool aiMailerCourrielConfigLastDraft = true;                     // Label Configuration Email - Draft
+        private const string aiMailerDicteeStartButtonTip = "Start Vocal dictation";    // Tip boutton Dictee vocale
+        private const string aiMailerDicteeStopButtonTip = "Stop Vocal dictation";      // Tip boutton Dictee vocale
+        private const string aiMailerRdvButtonTip = "Open Outlook Meeting";   // Tip boutton Envoi Rdv 
 
         internal const int aiMailerUndoStackMaxItems = 99;          // Pas plus de 99 Undos
         private const int aiMailerPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
@@ -109,8 +114,8 @@ namespace AIMailer
         private const int aiMailerActionPanelXOffset = 0;           // Déclalage X du panneau d'Actions
         private const int aiMailerActionPanelYOffset = 10;          // Déclalage Y du panneau d'Actions
         private const int aiMailerEditeurHitGroupTimeMax = 500;     // Limite de temps (msec) pour le regroupement de texte (Undo)
-        private const int aiMailerDicteeButtonRigthMargin = 10;     // Marge droite Boutton Dictee
-        private const int aiMailerDicteeButtonBottomMargin = 10;    // Marge Bas Boutton Dictee
+        private const int aiMailerFctButtonRigthMargin = 10;        // Marge droite Boutons de Fonctions 
+        private const int aiMailerFctButtonBottomMargin = 10;       // Marge Bas Boutons de Fonctions 
         private const int aiMailerRegexTimeoutMsec = 5000;          // Time-out Regex (préco sonarqube)
         private const float aiMailerDictationDefaultConfidence = (float)0.6; // Defautl Dictation Confidence
 
@@ -164,7 +169,7 @@ namespace AIMailer
             { "ERROR_EDITOR_IASERVICEUNKNOW",  "No AI service: AI Call impossible!" },
             { "ERROR_EDITOR_IAMODELUNKNOWN",   "Unknown AI model: AI call impossible!" },
             { "ERROR_EDITOR_REGEXTIMEOUT",     "Internal Error : Time-out on Regex call!" },
-            { "ERROR_EDITOR_OUTLOOKNOTRUNNING","Please launch Outlook in order to send emails!" },
+            { "ERROR_EDITOR_OUTLOOKNOTRUNNING","Please launch Outlook in order to allow interactions!" },
             { "ERROR_EDITOR_OUTLOOKSENDDIRECT","Error while sending email : Please check that Outlook is running fine!" },
             { "ERROR_EDITOR_OUTLOOKSAVEDRAFT", "Error while saving draft email : Please check that Outlook is running fine!" }
         };
@@ -187,14 +192,14 @@ namespace AIMailer
         private readonly LinkedList<string> aiMailerRedoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Redo
         private readonly Timer aiMailerEditeurHitGroupTimer = new Timer();                // Timer de regroupement de Texte ppour le Undo
         private bool aiMailerEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
-        private AiMailerVoiceDictation aiMailerDictationInstance = null;
+        private AIMailerVoiceDictation aiMailerDictationInstance = null;
         private bool aiMailerIsDictating = false;
         public static float aiMailerDictationConfidence = aiMailerDictationDefaultConfidence;
         private int aiMailerEditeurDefaultTextFontSize = aiMailerDefaultTextFontSize; // Taille de police Editeur initiale 
         private string aiMailerEmailLastTo = aiMailerCourrielConfigLastTo;            // Email : dernier To
         private string aiMailerEmailLastCc = aiMailerCourrielConfigLastCc;            // Email : dernier Cc
         private string aiMailerEmailLastSubject = aiMailerCourrielConfigLastObject;   // Email : dernier Subject
-        private bool  aiMailerEmailLastDraft    = aiMailerCourrielConfigLastDraft;    // Email : dernier Draft
+        private bool aiMailerEmailLastDraft = aiMailerCourrielConfigLastDraft;    // Email : dernier Draft
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -474,7 +479,7 @@ namespace AIMailer
             // Temperature with model ratio
             decimal calcTemp = action.Temperature * (mdl.TemperatureRatio > 0 ? mdl.TemperatureRatio : 1);
             string aiModel = mdl.Model;
-            string serviceAndModel = string.Format(aiMailerStringMaskServiceAndModel, svc.Name,mdl.Name,mdl.Type);
+            string serviceAndModel = string.Format(aiMailerStringMaskServiceAndModel, svc.Name, mdl.Name, mdl.Type);
             string typeString = mdl.Type.ToString();
             string actionPrompt = action.Prompt;
             string minPrompt = actionPrompt + " " + texteUtilisateur;
@@ -487,9 +492,9 @@ namespace AIMailer
 
             // Enlever NewLine en doublons et tronquer "Texte Utilisateur" dans le message à afficher 
             //string userTextShort = Regex.Replace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
-            string userTextShort = RegexSafeReplace(texteUtilisateur,@"(\r?\n){2,}",Environment.NewLine);
-            userTextShort = userTextShort.Length > aiMailerPromptToShowLengthMax 
-                            ? userTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc 
+            string userTextShort = RegexSafeReplace(texteUtilisateur, @"(\r?\n){2,}", Environment.NewLine);
+            userTextShort = userTextShort.Length > aiMailerPromptToShowLengthMax
+                            ? userTextShort.Substring(0, aiMailerPromptToShowLengthMax) + aiMailerStringMsgTrunc
                             : userTextShort;
 
             // Enlever NewLine en doublons et tronquer "Full Action Prompt" dans le message à afficher 
@@ -668,9 +673,9 @@ namespace AIMailer
                 aiMailerEmailLastSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.LastSubject)) ? aiMailerCourrielConfigLastObject : emailCfg.LastSubject;
                 aiMailerEmailLastDraft = emailCfg.LastDraft;
 
-                EditorConfiguration editorCfg = aiMailerAppConfiguration.Editor; 
-                aiMailerEditeurDefaultTextFontSize = (editorCfg == null) 
-                                                    || (editorCfg.TextFontSize < aiMailerEditeurTextFontSizeMin) 
+                EditorConfiguration editorCfg = aiMailerAppConfiguration.Editor;
+                aiMailerEditeurDefaultTextFontSize = (editorCfg == null)
+                                                    || (editorCfg.TextFontSize < aiMailerEditeurTextFontSizeMin)
                                                     || (editorCfg.TextFontSize > aiMailerEditeurTextFontSizeMax) ? aiMailerDefaultTextFontSize : editorCfg.TextFontSize;
                 aiMailerDictationConfidence = (editorCfg == null) ? aiMailerDictationDefaultConfidence : editorCfg.DictationConfidence;
 
@@ -708,7 +713,7 @@ namespace AIMailer
             var config = new AIMailerConfigurationFile
             {
                 Actions = aiMailerAIActions,
-                Services = aiMailerAIServices,   
+                Services = aiMailerAIServices,
                 Configuration = aiMailerAppConfiguration
             };
 
@@ -768,7 +773,7 @@ namespace AIMailer
             // Initialiser le Timer de groupement de saisie (undo/redo)
             InitialiserInterfaceHitGroupTimer();
 
-            
+
 
         }
 
@@ -779,8 +784,8 @@ namespace AIMailer
         {
             // Taille Textbox 
             this.Text = aiMailerName;
-            this.Size = new Size(aiMailerEditeurTextWidth + 2 * aiMailerTextXOffset + 20, 
-                                menuStripYOffset + aiMailerTextFontSliderHeight + aiMailerEditeurTextHeight 
+            this.Size = new Size(aiMailerEditeurTextWidth + 2 * aiMailerTextXOffset + 20,
+                                menuStripYOffset + aiMailerTextFontSliderHeight + aiMailerEditeurTextHeight
                                 + 2 * aiMailerTextYOffset + aiMailerTextYScrollbar);
 
             // ************************************************
@@ -842,7 +847,7 @@ namespace AIMailer
             {
                 aiMailerUndoStack.Push(aiMailerEditor.Text);
                 aiMailerRedoStack.Clear();
-                aiMailerEditor.Paste(); 
+                aiMailerEditor.Paste();
             };
             contextMenu.MenuItems.Add(pasteMenuItem);
             MenuItem selectAllMenuItem = new MenuItem(aiMailerTextEditorSelectionnerMenuLabel);
@@ -851,7 +856,7 @@ namespace AIMailer
             contextMenu.MenuItems.Add(selectAllMenuItem);
 
             // Gestion du Undo pour l'écriture 
-            aiMailerEditor.KeyDown += aiMailerEditor_KeyDown;
+            aiMailerEditor.KeyDown += AiMailerEditor_KeyDown;
 
             aiMailerEditor.ContextMenu = contextMenu;
             this.Controls.Add(aiMailerEditor);
@@ -865,7 +870,7 @@ namespace AIMailer
         }
 
         // Gestion des frappes clavier pour le Undo / Redo 
-        private void aiMailerEditor_KeyDown (object sender, KeyEventArgs e)
+        private void AiMailerEditor_KeyDown(object sender, KeyEventArgs e)
         {
             // Ctrl+Y → Redo
             if (e.Control && e.KeyCode == Keys.Y)
@@ -993,13 +998,18 @@ namespace AIMailer
             // Ajout à la fenêtre
             this.Controls.Add(fontSizeSlider);
             this.Controls.Add(fontSizeLabel);
+            hoverTip.SetToolTip(fontSizeSlider, aiMailerTextFontSliderTip);
         }
 
         /// Bouton de dictée (expérimental) & Email
         private void InitialiserInterfaceEditeurBoutonsFonctions()
         {
             Font btnFont = new Font(this.Font.FontFamily, aiMailerDicteeButtonFontSize);
+            int spacing = aiMailerFctButtonRigthMargin;
 
+            ///
+            /// Bouton de Dictee Vocale 
+            ///
             // Lit le fichier Icone du bouton (null si probleme => Bouton sera en texte)
             var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOffIcon),
                                             new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
@@ -1009,8 +1019,8 @@ namespace AIMailer
                 Image = iconBmp,
                 ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
                 Text = (iconBmp == null ? aiMailerDicteeButtonText : string.Empty),
-                Width = aiMailerFctButtonIconSize+8,
-                Height = aiMailerFctButtonIconSize+8,
+                Width = aiMailerFctButtonIconSize + 8,
+                Height = aiMailerFctButtonIconSize + 8,
                 Font = btnFont,
                 FlatStyle = FlatStyle.Flat,
                 // On ancre à droite ET en bas
@@ -1019,18 +1029,19 @@ namespace AIMailer
             btnDictee.FlatAppearance.BorderSize = 0;
 
             // Quand la Form est initialisée, ClientSize est déjà défini
-            btnDictee.Left = this.ClientSize.Width - btnDictee.Width - aiMailerDicteeButtonRigthMargin;
-            btnDictee.Top = this.ClientSize.Height - btnDictee.Height - aiMailerDicteeButtonBottomMargin +5;
+            btnDictee.Left = this.ClientSize.Width - btnDictee.Width - aiMailerFctButtonRigthMargin;
+            btnDictee.Top = this.ClientSize.Height - btnDictee.Height - aiMailerFctButtonBottomMargin + 5;
 
 
             btnDictee.Click += (s, e) => EditeurDemarrerDictee((Button)s);
             this.Controls.Add(btnDictee);
+            hoverTip.SetToolTip(btnDictee, aiMailerDicteeStartButtonTip);
 
             ///
             /// Bouton d'envoi d'email             
             ///
             ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerCourrielButtonIcon),
-                                            new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+                                                new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
             iconBmp = ico.ToBitmap();
             Button btnEnvoyer = new Button
             {
@@ -1045,113 +1056,52 @@ namespace AIMailer
             };
             btnEnvoyer.FlatAppearance.BorderSize = 0;
 
-            // On le place juste à droite de btnDictee
-            int spacing = aiMailerDicteeButtonRigthMargin;
+            // On le place juste à gauche de btnDictee
             btnEnvoyer.Left = btnDictee.Left - btnEnvoyer.Width - spacing;
-            btnEnvoyer.Top = this.ClientSize.Height - btnDictee.Height - aiMailerDicteeButtonBottomMargin +5;  //btnDictee.Top;
+            btnEnvoyer.Top = this.ClientSize.Height - btnDictee.Height - aiMailerFctButtonBottomMargin + 5;  //btnDictee.Top;
 
             // Associez ici votre méthode d'envoi
             btnEnvoyer.Click += (s, e) => {
                 // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
                 var contenu = aiMailerEditor.Text;
-                ShowEmailDialog(contenu);
+                OpenOutlookEmail(contenu);
             };
             this.Controls.Add(btnEnvoyer);
-        }
+            hoverTip.SetToolTip(btnEnvoyer, aiMailerCourrielConfigTitle);
 
-        ///
-        /// Fenetre de configuration d'envoi d'emails
-        /// 
-        private void ShowEmailDialog(string body)
-        {
-            using (var dlg = new WinForms.Form())
+            ///
+            /// Bouton d'envoi de Rendez-vous             
+            ///
+            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerRdvButtonIcon),
+                                            new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
+            iconBmp = ico.ToBitmap();
+            Button btnRdv = new Button
             {
-                // --- initialisation du dialogue (comme avant) ---
-                dlg.Text = aiMailerCourrielConfigTitle;
-                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
-                dlg.StartPosition = FormStartPosition.CenterParent;
-                dlg.AutoSize = true;
-                dlg.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-                dlg.Font = this.Font;
-                dlg.Padding = new Padding(10);
+                Image = iconBmp,
+                ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
+                Text = (iconBmp == null ? aiMailerRdvButtonText : string.Empty),
+                Width = aiMailerFctButtonIconSize + 8,
+                Height = aiMailerFctButtonIconSize + 8,
+                Font = btnFont,
+                FlatStyle = FlatStyle.Flat,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            };
+            btnRdv.FlatAppearance.BorderSize = 0;
 
-                // Labels + TextBoxes
-                var lblTo = new Label { Text = aiMailerCourrielConfigTo, AutoSize = true, Left = 10, Top = 15 };
-                var txtTo = new TextBox { Left = 80, Width = 300, Top = lblTo.Top - 3, Text = aiMailerEmailLastTo };
-                var lblCc = new Label { Text = aiMailerCourrielConfigCc, AutoSize = true, Left = 10, Top = 45 };
-                var txtCc = new TextBox { Left = 80, Width = 300, Top = lblCc.Top - 3, Text = aiMailerEmailLastCc };
-                var lblSubject = new Label { Text = aiMailerCourrielConfigObject, AutoSize = true, Left = 10, Top = 75 };
-                var txtSubject = new TextBox { Left = 80, Width = 300, Top = lblSubject.Top - 3, Text = aiMailerEmailLastSubject };
+            // On le place juste à gauche de btnEnvoyer
+            btnRdv.Left = btnEnvoyer.Left - btnRdv.Width - spacing;
+            btnRdv.Top = this.ClientSize.Height - btnRdv.Height - aiMailerFctButtonBottomMargin + 5;  //btnEnvoyer.Top;
 
-                // Checkbox brouillon
-                var chkDraft = new CheckBox
-                {
-                    Text = aiMailerCourrielConfigDraft,
-                    Left = 80,
-                    Top = 105,
-                    AutoSize = true,
-                    Checked = aiMailerEmailLastDraft
-                };
+            // Associez ici votre méthode d'envoi
+            btnRdv.Click += (s, e) => {
+                // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
+                var contenu = aiMailerEditor.Text;
+                OpenOutlookRdv(contenu);
+            };
+            this.Controls.Add(btnRdv);
+            hoverTip.SetToolTip(btnRdv, aiMailerRdvButtonTip);
 
-                // Boutons Ok / Annuler centrés
-                int spacing = 10;
-                int totalWidth = 80 /*btnOk*/ + spacing + 80 /*btnCancel*/;
-                int startX = (dlg.ClientSize.Width - totalWidth) / 2 +100;
-                int btnY = 140;
-
-                var btnOk = new Button
-                {
-                    Text = "OK",
-                    DialogResult = DialogResult.OK,
-                    Width = 80,
-                    Left = startX,
-                    Top = btnY
-                };
-
-                var btnCancel = new Button
-                {
-                    Text = "Annuler",
-                    DialogResult = DialogResult.Cancel,
-                    Width = 80,
-                    Left = startX + btnOk.Width + spacing,
-                    Top = btnY
-                };
-
-                dlg.Controls.AddRange(new Control[]
-                {
-                    lblTo, txtTo,
-                    lblCc, txtCc,
-                    lblSubject, txtSubject,
-                    chkDraft,
-                    btnOk, btnCancel
-                });
-
-                dlg.AcceptButton = btnOk;
-                dlg.CancelButton = btnCancel;
-
-                if (dlg.ShowDialog(this) == DialogResult.OK)
-                {
-                    // Récupération
-                    var to = txtTo.Text.Trim();
-                    var cc = txtCc.Text.Trim();
-                    var subject = txtSubject.Text.Trim();
-                    var draft = chkDraft.Checked;
-
-                    // Mémorisation
-                    aiMailerEmailLastTo = to;
-                    aiMailerEmailLastCc = cc;
-                    aiMailerEmailLastSubject = subject;
-                    aiMailerEmailLastDraft = draft;
-
-                    // Envoi ou brouillon
-                    if (draft)
-                        AiMailerEmailSender.SendToOutookAsDraft(to, subject, body);
-                    else
-                        AiMailerEmailSender.SendToOutookDirect(to, cc, subject, body);
-                }
-            }
         }
-
 
         /// Initialisation du Timer pour regroupelmt du texte entré (fonction Undo)
         private void InitialiserInterfaceHitGroupTimer()
@@ -1164,20 +1114,20 @@ namespace AIMailer
             };
 
         }
-        private void AiMailerEditor_KeyUp (object sender, EventArgs e)
+        private void AiMailerEditor_KeyUp(object sender, EventArgs e)
         {
-               OuvrirPaletteActions();   // affiche la palette
+            OuvrirPaletteActions();   // affiche la palette
         }
 
         private void AiMailerEditor_MouseUp(object sender, MouseEventArgs e)
         {
-                OuvrirPaletteActions();
+            OuvrirPaletteActions();
         }
 
         /////=== Méthode de gestion des clics de souris sur le TextBox ===
         private void AiMailerEditor_MouseDown(object sender, MouseEventArgs e)
         {
-            
+
             var now = Environment.TickCount;
 
             // Vérifie si le clic est rapproché du précédent (double/triple clic)
@@ -1383,7 +1333,7 @@ namespace AIMailer
         }
 
         // Sauvegarde du texte dans le fichier AutoSave
-        private bool EditorAutoSave( bool signalerErreurP = true )
+        private bool EditorAutoSave(bool signalerErreurP = true)
         {
             bool okP = true;
             try
@@ -1396,7 +1346,7 @@ namespace AIMailer
                 if (signalerErreurP)
                     ErrorShow("ERROR_EDITOR_AUTOSAVEERR", ex.Message, WinForms.Application.StartupPath, aiMailerAutoSaveFile);
             }
-            return okP; 
+            return okP;
         }
 
         // Menu Config : Relancer l'application pour relire la configuration
@@ -1406,8 +1356,8 @@ namespace AIMailer
             if (!string.IsNullOrWhiteSpace(aiMailerEditor.Text))
             {
                 // Sauvegarde du contenu de l'éditeur dans un fichier local
-                if (! EditorAutoSave(false) )
-                { 
+                if (!EditorAutoSave(false))
+                {
                     // Si impossible demande de confirmation à l'utilisateur
                     DialogResult result = MessageBox.Show(aiMailerRestartAutoSaveWarning, aiMailerRestartWarningTitle, MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                     if (result == DialogResult.No)
@@ -1440,11 +1390,12 @@ namespace AIMailer
                                 new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
                     Bitmap iconBmp = ico.ToBitmap();
                     sourceButton.Image = iconBmp;
+                    hoverTip.SetToolTip(sourceButton, aiMailerDicteeStartButtonTip);
                 }
                 return;
             }
 
-            aiMailerDictationInstance = new AiMailerVoiceDictation(texteReconnu =>
+            aiMailerDictationInstance = new AIMailerVoiceDictation(texteReconnu =>
             {
                 this.Invoke((MethodInvoker)(() =>
                 {
@@ -1460,12 +1411,13 @@ namespace AIMailer
             aiMailerDictationInstance.Start();
             aiMailerIsDictating = true;
             if (sourceButton != null)
-            { 
+            {
                 var ico = new Icon(Path.Combine(WinForms.Application.StartupPath, aiMailerDicteeButtonOnIcon),
                 new Size(aiMailerFctButtonIconSize, aiMailerFctButtonIconSize));
                 Bitmap iconBmp = ico.ToBitmap();
                 sourceButton.Image = iconBmp;
-            } 
+                hoverTip.SetToolTip(sourceButton, aiMailerDicteeStopButtonTip);
+            }
         }
 
         ///// **********************************************************************
@@ -1690,7 +1642,7 @@ namespace AIMailer
         /// • Replace le focus dans l’éditeur dès qu’elle s’affiche.
         /// • Se ferme automatiquement si la sélection de l’éditeur change.
         /// </summary>
-        private void OuvrirPaletteActions( bool contextMenuItem = false)
+        private void OuvrirPaletteActions(bool contextMenuItem = false)
         {
             // Si appel du Menu de Context
             if (contextMenuItem)
@@ -1738,9 +1690,9 @@ namespace AIMailer
             Point p = Cursor.Position;     // coordonnées écran de la souris
             Rectangle work = Screen.FromPoint(p).WorkingArea;
 
-            int posX = p.X + aiMailerActionPanelXOffset; 
+            int posX = p.X + aiMailerActionPanelXOffset;
             int posY = p.Y + aiMailerActionPanelYOffset;
-            
+
             // Si la palette dépasserait à droite, on la décale à gauche
             if (posX + aiMailerPaletteActions.Width > work.Right)
                 posX = work.Right - aiMailerPaletteActions.Width;
@@ -1748,10 +1700,10 @@ namespace AIMailer
             // Si elle dépasserait en bas, on la met au-dessus du pointeur
             if (posY + aiMailerPaletteActions.Height > work.Bottom)
                 posY = p.Y - 3 * aiMailerActionPanelYOffset; // - aiMailerPaletteActions.Height;
-            
+
             aiMailerPaletteActions.Location = new Point(posX, posY);
             /* ▲▲ FIN du nouveau bloc ▲▲ */
-            
+
             // ─── Panneau et boutons ──────────────────────────────────
             FlowLayoutPanel panel = new FlowLayoutPanel
             {
@@ -1766,7 +1718,7 @@ namespace AIMailer
             // aiMailerPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
-            
+
             aiMailerPaletteActions.Controls.Add(panel);
 
             int x = aiMailerButtonXOffset;
@@ -1908,12 +1860,85 @@ namespace AIMailer
         /// <summary>
         /// Envoi d'email via Outlook
         /// </summary>
-        
+        private void OpenOutlookEmail(string body)
+        {
+            try
+            {
+                // Récupère une instance d'Outlook en cours (nécessaire qu'il soit lancé)
+                Outlook.Application outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
+
+                // Crée un nouvel email
+                Outlook.MailItem mail = (Outlook.MailItem)outlookApp.CreateItem(Outlook.OlItemType.olMailItem);
+
+                // Préremplir les champs
+                //mail.To = "exemple@edu.devinci.fr";
+                //mail.CC = "copie@devinci.fr";
+                mail.Subject = aiMailerEmailLastSubject;
+                mail.Body = body;
+
+                // Ouvre l'email (l'utilisateur pourra le modifier avant d’envoyer)
+                mail.Display(true);  // true = modal
+            }
+            catch (COMException)
+            {
+                // Error Outlook not running
+                ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
+                return;
+            }
+            catch (SystemException ex)
+            {
+                // Error while calling Outlook 
+                ErrorShow("ERROR_EDITOR_OUTLOOKSAVEDRAFT", ex.Message);
+                return;
+            }
+        }
+
+
+        ///
+        /// Fenetre d'ouverture de Rdv Outlook
+        /// 
+        private void OpenOutlookRdv(string body)
+        {
+            try
+            {
+                // Récupère l'instance Outlook en cours
+                Outlook.Application outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
+
+                // Crée un nouveau rendez-vous
+                Outlook.AppointmentItem rdv = (Outlook.AppointmentItem)
+                    outlookApp.CreateItem(Outlook.OlItemType.olAppointmentItem);
+
+                // Remplit les informations de base
+                rdv.Subject = aiMailerName;
+                rdv.Start = DateTime.Now.AddHours(1);      // Heure de début
+                rdv.End = DateTime.Now.AddHours(2);        // Heure de fin
+                rdv.Location = "Salle Zoom / Bureau";
+                rdv.Body = body;
+                rdv.ReminderMinutesBeforeStart = 15;
+                rdv.BusyStatus = Outlook.OlBusyStatus.olBusy;
+
+                // Affiche le rendez-vous sans l'enregistrer automatiquement
+                rdv.Display(true); // true = modal, false = non-modal
+            }
+            catch (COMException)
+            {
+                // Error Outlook not running
+                ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
+                return;
+            }
+            catch (Exception ex)
+            {
+                // Error while calling Outlook 
+                ErrorShow("ERROR_EDITOR_OUTLOOKSAVEDRAFT", ex.Message);
+                return;
+            }
+        }
+        /****************************************************************************
         public static class AiMailerEmailSender
         {
             /// Envoi d'email via Outlook : Enregistrement comme Brouillon
             public static void SendToOutookAsDraft(string to, string subject, string body)
-             {
+            {
                 try
                 {
                     // Tente d’attacher à une instance existante d’Outlook
@@ -1922,10 +1947,10 @@ namespace AIMailer
                     {
                         outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
                     }
-                    catch (COMException ex)
+                    catch (COMException)
                     {
-                        // Outlook not running
-                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING", ex.Message);
+                        // Error Outlook not running
+                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
                         return;
                     }
 
@@ -1945,8 +1970,101 @@ namespace AIMailer
                     return;
                 }
             }
+        }
 
-            /// Envoi d'email via Outlook : Envoi direct
+                ///
+        /// Fenetre de configuration d'envoi d'emails à Outlook
+        /// 
+        private void ShowSendEmailToOutlookDialog(string body)
+        {
+            using (var dlg = new WinForms.Form())
+            {
+                // --- initialisation du dialogue (comme avant) ---
+                dlg.Text = aiMailerCourrielConfigTitle;
+                dlg.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dlg.StartPosition = FormStartPosition.CenterParent;
+                dlg.AutoSize = true;
+                dlg.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+                dlg.Font = this.Font;
+                dlg.Padding = new Padding(10);
+
+                // Labels + TextBoxes
+                var lblTo = new Label { Text = aiMailerCourrielConfigTo, AutoSize = true, Left = 10, Top = 15 };
+                var txtTo = new TextBox { Left = 80, Width = 300, Top = lblTo.Top - 3, Text = aiMailerEmailLastTo };
+                var lblCc = new Label { Text = aiMailerCourrielConfigCc, AutoSize = true, Left = 10, Top = 45 };
+                var txtCc = new TextBox { Left = 80, Width = 300, Top = lblCc.Top - 3, Text = aiMailerEmailLastCc };
+                var lblSubject = new Label { Text = aiMailerCourrielConfigObject, AutoSize = true, Left = 10, Top = 75 };
+                var txtSubject = new TextBox { Left = 80, Width = 300, Top = lblSubject.Top - 3, Text = aiMailerEmailLastSubject };
+
+                // Checkbox brouillon
+                var chkDraft = new CheckBox
+                {
+                    Text = aiMailerCourrielConfigDraft,
+                    Left = 80,
+                    Top = 105,
+                    AutoSize = true,
+                    Checked = aiMailerEmailLastDraft
+                };
+
+                // Boutons Ok / Annuler centrés
+                int spacing = 10;
+                int totalWidth = 80 + spacing + 80 ; // btnOk + btnCancel
+                int startX = (dlg.ClientSize.Width - totalWidth) / 2 + 100;
+                int btnY = 140;
+
+                var btnOk = new Button
+                {
+                    Text = "OK",
+                    DialogResult = DialogResult.OK,
+                    Width = 80,
+                    Left = startX,
+                    Top = btnY
+                };
+
+                var btnCancel = new Button
+                {
+                    Text = "Annuler",
+                    DialogResult = DialogResult.Cancel,
+                    Width = 80,
+                    Left = startX + btnOk.Width + spacing,
+                    Top = btnY
+                };
+
+                dlg.Controls.AddRange(new Control[]
+                {
+                    lblTo, txtTo,
+                    lblCc, txtCc,
+                    lblSubject, txtSubject,
+                    chkDraft,
+                    btnOk, btnCancel
+                });
+
+                dlg.AcceptButton = btnOk;
+                dlg.CancelButton = btnCancel;
+
+                if (dlg.ShowDialog(this) == DialogResult.OK)
+                {
+                    // Récupération
+                    var to = txtTo.Text.Trim();
+                    var cc = txtCc.Text.Trim();
+                    var subject = txtSubject.Text.Trim();
+                    var draft = chkDraft.Checked;
+
+                    // Mémorisation
+                    aiMailerEmailLastTo = to;
+                    aiMailerEmailLastCc = cc;
+                    aiMailerEmailLastSubject = subject;
+                    aiMailerEmailLastDraft = draft;
+
+                    // Envoi ou brouillon
+                    if (draft)
+                        AiMailerEmailSender.SendToOutookAsDraft(to, subject, body);
+                    else
+                        AiMailerEmailSender.SendToOutookDirect(to, cc, subject, body);
+                }
+            }
+
+                    /// Envoi d'email via Outlook : Envoi direct
             public static void SendToOutookDirect(string to, string cc, string subject, string body)
             {
                 try
@@ -1957,10 +2075,10 @@ namespace AIMailer
                     {
                         outlookApp = (Outlook.Application)Marshal.GetActiveObject("Outlook.Application");
                     }
-                    catch (COMException ex)
+                    catch (COMException)
                     {
                         /// Outlook not running
-                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING", ex.Message);
+                        ErrorShow("ERROR_EDITOR_OUTLOOKNOTRUNNING");
                         return;
                     }
 
@@ -1987,14 +2105,14 @@ namespace AIMailer
                     return;
                 }
             }
-        }
 
+        *****************************************************************/
         /// <summary>
         /// Remplacement Regex avec timeout maximal
         /// </summary>
 
         private static string RegexSafeReplace(string input, string pattern, string replacement, int timeoutMs = aiMailerRegexTimeoutMsec)
-        { 
+        {
             try
             {
                 var regex = new Regex(pattern, RegexOptions.None, TimeSpan.FromMilliseconds(timeoutMs));
@@ -2072,7 +2190,7 @@ namespace AIMailer
             ReshowDelay = 0,
             AutoPopDelay = 1000    // disparaît automatiquement au bout de 3 s
         };
- 
+
 
         /// <summary>
         /// Définit la marge interne gauche et droite (en pixels) d’une TextBox WinForms.

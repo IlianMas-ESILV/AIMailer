@@ -1,18 +1,10 @@
 Hello,
 
-
-
 I hope you're fine.
 
 I'm writing you this email to let you know that our project is making good progress. 
-
 It's now called AIMailer. Development is progressing steadily and the industrialisation of the POC to turn it into a reliable and maintainable solution is well under way.
-
-
 To sum up, we have completed 80% of the development of the requested functions, and the additional functions are in the process of being incorporated.
 
-
-
 Yours sincerely,
-
 The AIMailer Team
