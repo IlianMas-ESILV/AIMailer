@@ -1,9 +1,15 @@
 Bonjour,
 
-Je suis heureux de vous informer que notre projet progresse bien et qu'il est maintenant appelé AIMailer. 
-Le développement avance régulièrement, et la mise en œuvre d'une POC pour transformer le projet en solution fiable et maintenable est actuellement en cours.
+J'espère que vous allez bien.
 
-Nous avons réalisé 80% du développement des fonctionnalités demandées, et les fonctionnalités supplémentaires sont en train d'être intégrées.
+J'ai le plaisir de vous annoncer que notre projet avance bien et porte désormais le nom d'IAssistant. 
+Le développement progresse à un rythme régulier, et nous travaillons actuellement sur une Preuve de Concept afin d’en faire une solution robuste et pérenne.
 
-Cordialement,
-L'équipe AIMailer
+
+Nous avons déjà atteint 80 % des fonctionnalités prévues, et les fonctionnalités complémentaires sont en cours d'intégration.
+
+
+
+Bien cordialement,
+
+Votre IAssistant

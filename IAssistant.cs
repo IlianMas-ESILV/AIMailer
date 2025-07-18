@@ -1,18 +1,17 @@
-﻿/******* -----------------------------------------------------------------------------------------
+﻿/******* ---------------------------------------------------------------------
  * *****    IAssistant      Intelligence Artificial-powered Office Assistant
- * ***** -----------------------------------------------------------------------------------------
+ * ***** ---------------------------------------------------------------------
  * *****   
  * *****    IAssistant.cs   Main source file - Editor windows
  * *****
- * *****
- * ***** -- Author --------------------------------------------------------------------------------
+ * ***** -- Author -----------------------------------------------------------
  * *****
  * ***** -- (c) Ilian Mas (ESILV A1) / June 2025
  * *****
- * ***** -- Major Changes -------------------------------------------------------------------------
+ * ***** -- Major Changes ----------------------------------------------------
  * *****    16/07/25 - Ilian Mas - Renammed to IAssistant
  * *****    26/05/25 - Ilian Mas - Initial version
- * ***** - ---------------------------------------------------------------------------------------
+ * ***** - -------------------------------------------------------------------
  ******/
 
 using System;
@@ -112,7 +111,7 @@ namespace IAssistant
         private const string iAssistantDicteeStopButtonTip = "Stop Vocal dictation";     // Tip boutton Dictee vocale
         private const string iAssistantRdvButtonTip = "Open Outlook Meeting";            // Tip boutton Envoi Rdv 
 
-        internal const int iAssistantUndoStackMaxItems = 99;          // Pas plus de 99 Undos
+        private const int iAssistantUndoStackMaxItemsDefault = 999;   // Pas plus de 999 Undos par defaut (si pas en fichier de Config)
         private const int iAssistantPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
         private const int iAssistantErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
         private const int iAssistantDefaultTextFontSize = 11;         // Taille de police initiale
@@ -130,7 +129,7 @@ namespace IAssistant
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
-        private const string iAssistantEditeurTextFontFamily = "Inter";                              // Police par défaut (ou "Segoe UI")
+        private const string iAssistantEditeurTextFontFamily = "Inter";                                // Police par défaut (ou "Segoe UI")
         private const int iAssistantButtonTextFontSize = iAssistantDefaultTextFontSize - 1;            // Taille de police Boutons
         private const int iAssistantEditeurMenuFontSize = iAssistantButtonTextFontSize;                // Taille de police Menuq
         private const int iAssistantEditeurTextFontSizeMin = 6, iAssistantEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
@@ -140,9 +139,9 @@ namespace IAssistant
         private const int iAssistantTextFontSliderWidth = 200, iAssistantTextFontSliderHeight = 40;    // Taille du Curseur de police
         private const int iAssistantTextXOffset = 10, iAssistantTextYOffset = 10;
         private const int iAssistantTextXScrollbar = 25, iAssistantTextYScrollbar = 40;                // Taille Scrollbar Editeur
-        private const int iAssistantIAButtonIconSize = 32;                                           // Taille Icones des Boutons
-        private const int iAssistantButtonXOffset = 5, buttonYOffset = 5;                            // Decalage Boutons
-        private const int iAssistantButtonXSpace = 5, buttonYSpace = 5;                              // Boutons IA - Espacement 
+        private const int iAssistantIAButtonIconSize = 32;                                             // Taille Icones des Boutons
+        private const int iAssistantButtonXOffset = 5, buttonYOffset = 5;                              // Decalage Boutons
+        private const int iAssistantButtonXSpace = 5, buttonYSpace = 5;                                // Boutons IA - Espacement 
         private const int iAssistantButtonWidth = iAssistantIAButtonIconSize + 8;                      // Boutons IA - Largeur
         private const int iAssistantButtonHeight = iAssistantButtonWidth;                              // Boutons IA - Hauteur
         // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
@@ -157,8 +156,6 @@ namespace IAssistant
         private static readonly Color iAssistantEditeurCurseurForeColor = iAssistantMyColorBlueDark;
         private static readonly Color iAssistantButtonBackColor = iAssistantMyColorBluePale2;
         private static readonly Color iAssistantButtonForeColor = iAssistantMyColorBlueDark;
-        private int iAssistantEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
-        private int iAssistantEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
 
         // ********************************
         // ***** Error Messages ***********
@@ -194,7 +191,7 @@ namespace IAssistant
         // *****************************************************
         private List<AIService> iAssistantAIServices = null;                                // Liste des Services IA configurés
         private List<AIAction> iAssistantAIActions = null;                                  // Liste des Modèles IA configurés
-        private AppConfiguration iAssistantAppConfiguration = null;                         // Configuraiton interne
+        private AIAppConfiguration iAssistantAppConfiguration = null;                         // Configuraiton interne
         private static AIService iAssistantAIServiceActif = null;                           // Ajout pour mémoriser le service actif
         private static AIModel iAssistantAIModeleActif = null;                              // Ajout pour mémoriser le modèle actif
         private readonly LinkedList<string> iAssistantUndoStack = new LinkedList<string>(); // 🔁 Pile (doublement chaînée) pour la fonction Undo 
@@ -203,11 +200,16 @@ namespace IAssistant
         private bool iAssistantEditeurHitGroupActive = false;                               // L'utilisateur est-il en train de taper du texte ?
         private IAssistantVoiceDictation iAssistantDictationInstance = null;
         private bool iAssistantIsDictating = false;
-        public static float iAssistantDictationConfidence = iAssistantDictationDefaultConfidence;   // Voice Dictation Confidence (0.0 - 1.0)
+        private Point iAssistantPaletteActionOffset = Point.Empty;                                  // Poisiton de la Palette d'Actions IA
         private int iAssistantEditeurDefaultTextFontSize = iAssistantDefaultTextFontSize;           // Taille de police Editeur initiale 
         private string iAssistantOutlookEmailSubject = iAssistantOutlookEmailSubjectDefault;        // Outlook : Subject Email
         private string iAssistantOutlookMeetingSubject = iAssistantOutlookMeetingSubjectDefault;    // Outlook : Subject Rdv
         private string iAssistantOutlookMeetingLocation = iAssistantOutlookMeetingLocationDefault;  // Outlook : Location
+        private int iAssistantEditorlastClickTime = 0;                // Temps du dernier clic en msec (pour Triple clic)
+        private int iAssistantEditorClickCount = 0;                   // Compteur de clics successifs (pour Triple clic)
+
+        public static float iAssistantDictationConfidence = iAssistantDictationDefaultConfidence;   // Voice Dictation Confidence (0.0 - 1.0)
+        public static int iAssistantUndoStackMaxItems = iAssistantUndoStackMaxItemsDefault;           // Undos Max
 
         // ------------------------------------------------------------------
         // Permet de retrouver rapidement le service ou le modèle à partir
@@ -227,7 +229,15 @@ namespace IAssistant
         ///// **********************************************************************
         ///// **********************************************************************
 
-        // Description des Type de Modèles IA 
+        // Description du Fichier de Configuration
+        private class IAssistantConfigFile
+        {
+            public List<AIAction> Actions { get; set; }            // Liste des Actions IA
+            public List<AIService> Services { get; set; }          // Liste des Services IA
+            public AIAppConfiguration Configuration { get; set; }     // Configuration interne de l'application
+        }
+
+        // Description des Types de Modèles IA 
         public enum AIModelType
         {
             Chat,             // Utilise le format messages (avec rôles: system, user)
@@ -235,6 +245,7 @@ namespace IAssistant
             ChatUser,         // Idem Chat mais avec Role User uniquement (sans Role System)
             ChatUserMin,      // Idem ChatUser mais sans Contexte de prompt
             ChatUserTokens,   // Idem ChatUser avec Max Tokens
+            ChatAzure,        // Azure OpenAI Service - Champs d'authentification spécifique
             Completion,       // Utilise le format prompt 
             CompletionMin,    // Idem Completion sans Contexte de prompt
             CompletionTokens, // Idem Completion avec Max Tokens
@@ -278,7 +289,7 @@ namespace IAssistant
         }
 
         // Configuration interne Application
-        private class AppConfiguration
+        private class AIAppConfiguration
         {
             public OutlookConfiguration Outlook { get; set; }
             public EditorConfiguration Editor { get; set; }
@@ -289,13 +300,25 @@ namespace IAssistant
             public string MeetingSubject { get; set; }
             public string MeetingLocation { get; set; }
         }
-
         private class EditorConfiguration
         {
+            public int UndoMax { get; set; }
             public int TextFontSize { get; set; }
             public float DictationConfidence { get; set; }
+            public char TagPrefix { get; set; }
+            public List<ModelConfiguration> Tags { get; set; }
         }
-        // iAssistantEditeurDefaultTextFontSize
+        private class ModelConfiguration
+        {
+            public string Tag { get; set; }
+            public List<TagConfiguration> Models { get; set; }
+        }
+        private class TagConfiguration
+        {
+            public string Tag { get; set; }
+            public string Text { get; set; }
+        }
+
         ///// **********************************************************************
         ///// **********************************************************************
         ///// *****   Appel à l'IA à partir des boutons ****************************
@@ -436,6 +459,7 @@ namespace IAssistant
                     else if (!string.IsNullOrEmpty(svcLocal.KeyVar))
                     { 
                         bearerToken = Environment.GetEnvironmentVariable(svcLocal.KeyVar);
+                        // Erreur si la variable d'environnement est nulle
                         if (bearerToken == null)
                         { 
                             ErrorShow("ERROR_EDITOR_IACALLTOKENUNKNOWN", svcLocal.KeyVar);
@@ -443,11 +467,18 @@ namespace IAssistant
                         }
                     }
 
+                    // Affectation de la Clé d'autorisation dans le Header de la requête
                     if (!string.IsNullOrEmpty(bearerToken))
-                        client.DefaultRequestHeaders.Authorization =
-                            new AuthenticationHeaderValue("Bearer", bearerToken);
+                        // Au format attendu par Azure
+                        if (mdlLocal.Type == AIModelType.ChatAzure)
+                        {
+                            client.DefaultRequestHeaders.Clear();
+                            client.DefaultRequestHeaders.Add("api-key", bearerToken);
+                        }
+                        // Ou pour le format standard pour tous les autres services
+                        else client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", bearerToken);
 
-                    // Appel asychrone au Modèle dans LM Studio
+                    // Appel asychrone au Modèle du Service IA
                     var response = await client.PostAsync(mdlLocal.Url, iaRequestBodyJson);
                     if (!response.IsSuccessStatusCode)
                     {
@@ -456,7 +487,7 @@ namespace IAssistant
                         return;
                     }
 
-                    // Deserialisation de la reponse de l'ia
+                    // Deserialisation de la reponse de l'IA
                     var responseJson = await response.Content.ReadAsStringAsync();
                     using (var doc = JsonDocument.Parse(responseJson))
                     {
@@ -527,6 +558,7 @@ namespace IAssistant
             // Build Prompt depending on Actif Model
             switch (mdl.Type)
             {
+                case AIModelType.ChatAzure:           // Modèle Azure Chat
                 case AIModelType.Chat:                // Modèle Chat : Roles System + User (standard)
                     messageToShow = string.Format(iAssistantStringMaskChatPopupPrompt, serviceAndModel, typeString, fullActionPrompt, userTextShort, calcTemp, notApplTokens);
                     returnedObject = new
@@ -685,7 +717,7 @@ namespace IAssistant
                 iAssistantAIServices = config.Services ?? new List<AIService>();
 
                 // Parsing de la configuration interne
-                iAssistantAppConfiguration = config.Configuration ?? new AppConfiguration();
+                iAssistantAppConfiguration = config.Configuration ?? new AIAppConfiguration();
                 OutlookConfiguration emailCfg = iAssistantAppConfiguration.Outlook;
                 iAssistantOutlookEmailSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.EmailSubject)) ? iAssistantOutlookEmailSubjectDefault : emailCfg.EmailSubject;
                 iAssistantOutlookMeetingSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.MeetingSubject)) ? iAssistantOutlookMeetingSubjectDefault : emailCfg.MeetingSubject;
@@ -696,7 +728,7 @@ namespace IAssistant
                                                     || (editorCfg.TextFontSize < iAssistantEditeurTextFontSizeMin)
                                                     || (editorCfg.TextFontSize > iAssistantEditeurTextFontSizeMax) ? iAssistantDefaultTextFontSize : editorCfg.TextFontSize;
                 iAssistantDictationConfidence = (editorCfg == null) ? iAssistantDictationDefaultConfidence : editorCfg.DictationConfidence;
-
+                iAssistantUndoStackMaxItems = (editorCfg == null) || (editorCfg.UndoMax < 0) || (editorCfg.UndoMax > iAssistantUndoStackMaxItemsDefault ) ? iAssistantUndoStackMaxItemsDefault : editorCfg.UndoMax;
 
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
                 iAssistantAIModeleActif = iAssistantAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
@@ -715,9 +747,9 @@ namespace IAssistant
         // Structure de Parsing du fichier de configuration
         private class IAssistantConfigurationFile
         {
-            public List<AIAction> Actions { get; set; }          // AI Actions
-            public List<AIService> Services { get; set; }        // AI Services 
-            public AppConfiguration Configuration { get; set; }  // Configuration interne
+            public List<AIAction> Actions { get; set; }             // AI Actions
+            public List<AIService> Services { get; set; }           // AI Services 
+            public AIAppConfiguration Configuration { get; set; }   // Configuration interne
 
         }
 
@@ -1538,8 +1570,8 @@ namespace IAssistant
                 // 1) “Default” → utilise le service/modèle global sélectionné en haut
                 entries.Add(new ServiceModelEntry
                 {
-                    Service = iAssistantAIServiceActif,      // ton champ global
-                    Model = iAssistantAIModeleActif,      // ton champ global
+                    Service = iAssistantAIServiceActif,   
+                    Model = iAssistantAIModeleActif,      
                     Text = iAssistantActionCfgModelDefault
                 });
 
@@ -1691,13 +1723,13 @@ namespace IAssistant
             // ─── Création de la palette ──────────────────────────────────
             iAssistantPaletteActions = new Form
             {
-                FormBorderStyle = FormBorderStyle.None,       // plus de bordure ni de titre
+                FormBorderStyle = FormBorderStyle.None, // plus de bordure ni de titre
                 Text = iAssistantPaletteActionsTitle,
-                MaximizeBox = false,                           // (par sécurité)
+                StartPosition = FormStartPosition.Manual,
+                MaximizeBox = false,                         
                 MinimizeBox = false,
                 ShowInTaskbar = false,
-                StartPosition = FormStartPosition.Manual,
-                TopMost = true,
+                // TopMost = true, // Au dessus de toutes les fenetres du bureau
                 Font = this.Font,
                 BackColor = this.BackColor,
                 Opacity = 0.8,
@@ -1720,6 +1752,14 @@ namespace IAssistant
                 posY = p.Y - 3 * iAssistantActionPanelYOffset; // - iAssistantPaletteActions.Height;
 
             iAssistantPaletteActions.Location = new Point(posX, posY);
+            iAssistantPaletteActionOffset = new Point(iAssistantPaletteActions.Left - this.Left, iAssistantPaletteActions.Top - this.Top);
+
+            this.Move += (s, e) =>
+            {
+                if (iAssistantPaletteActions != null && !iAssistantPaletteActions.IsDisposed)
+                    iAssistantPaletteActions.Location = new Point(this.Left + iAssistantPaletteActionOffset.X,this.Top + iAssistantPaletteActionOffset.Y);
+            };
+
             /* ▲▲ FIN du nouveau bloc ▲▲ */
 
             // ─── Panneau et boutons ──────────────────────────────────
@@ -1732,13 +1772,9 @@ namespace IAssistant
                 AutoSizeMode = AutoSizeMode.GrowAndShrink
             };
             iAssistantPaletteActions.Controls.Add(panel);
-            // Point position = Cursor.Position;
-            // iAssistantPaletteActions.Location = new Point(position.X, position.Y);
 
             // ─── Panneau et boutons ──────────────────────────────────────
-
             iAssistantPaletteActions.Controls.Add(panel);
-
             int x = iAssistantButtonXOffset;
             foreach (var action in iAssistantAIActions)
             {
@@ -1986,7 +2022,7 @@ namespace IAssistant
 
     // -----------------------------------------------------------------------------
     // Extensions "Stack-like" pour LinkedList<T>
-    // Conserve Push / Pop tout en limitant la taille à 25 éléments.
+    // Conserve Push / Pop tout en limitant la taille 
     // -----------------------------------------------------------------------------
     internal static class LinkedListStackExtensions
     {

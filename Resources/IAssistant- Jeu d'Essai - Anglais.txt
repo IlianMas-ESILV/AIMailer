@@ -1,10 +1,10 @@
 Dear All,
 
-I hope you're fine.
+I hope you are doing well.
 
-I'm writing you this email to let you know that our project is making good progress. 
-It's now called AIMailer. Development is progressing steadily and the industrialisation of the POC to turn it into a reliable and maintainable solution is well under way.
-To sum up, we have completed 80% of the development of the requested functions, and the additional functions are in the process of being incorporated.
+I am pleased to inform you that our project is progressing smoothly and is now called IAssistant.
+Development is advancing steadily, and we are currently working on a Proof of Concept to transform it into a robust and sustainable solution.
+We have already completed 80% of the planned features, and additional functionalities are currently being integrated as planned.
 
-Yours sincerely,
-The AIMailer Team
+Best regards,
+Your IAssistant
