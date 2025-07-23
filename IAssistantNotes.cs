@@ -145,9 +145,8 @@ namespace IAssistant
             _flowTags.WrapContents = true;
             _flowTags.Margin = new Padding(0, 6, 0, 6);
 
-            ConfigureButton(_btnNew, "📝 New", new Padding(12, 4, 0, 0));
-            ConfigureButton(_btnPublish, "🖫 Save  ", new Padding(12, 0, 0, 4));
-            ConfigureButton(_btnNew, "📝 New", new Padding(12, 4, 0, 0));
+            ConfigureButton(_btnNew, "📝 New", new Padding(12, 0, 0, 4));
+            ConfigureButton(_btnPublish, "🖫 Save ", new Padding(12, 6, 0, 0));
             ConfigureButton(_btnSearch, "🔍 Search", new Padding(8, 0, 0, 0));
             ConfigureButton(_btnInsertEditor, "⇩ Insert into Editor…", new Padding(0, 12, 0, 0));
             _btnPublish.Enabled = false;   // au départ
@@ -198,8 +197,8 @@ namespace IAssistant
             editStack.Controls.Add(new Label { Text = "Contents", AutoSize = true, Margin = new Padding(0, 10, 0, 2) });
             var noteRow = TwoColumnRow();
             var btnStack = new TableLayoutPanel { AutoSize = true, ColumnCount = 1, RowCount = 2, Dock = DockStyle.Top };
-            btnStack.Controls.Add(_btnPublish, 0, 0);
-            btnStack.Controls.Add(_btnNew, 0, 1);
+            btnStack.Controls.Add(_btnNew, 0, 0);
+            btnStack.Controls.Add(_btnPublish, 0, 1);
             noteRow.Controls.Add(_txtNote, 0, 0);
             noteRow.Controls.Add(btnStack, 1, 0);
             editStack.Controls.Add(noteRow);
