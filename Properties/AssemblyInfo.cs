@@ -5,12 +5,12 @@ using System.Runtime.InteropServices;
 // Les informations générales relatives à un assembly dépendent de
 // l'ensemble d'attributs suivant. Changez les valeurs de ces attributs pour modifier les informations
 // associées à un assembly.
-[assembly: AssemblyTitle("AiMailer")]
+[assembly: AssemblyTitle("IAssistant")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
-[assembly: AssemblyCompany("(c) IFT")]
-[assembly: AssemblyProduct("AiMailer")]
-[assembly: AssemblyCopyright("Copyright © IFT 2025")]
+[assembly: AssemblyCompany("© Ilian Mas")]
+[assembly: AssemblyProduct("IAssistant")]
+[assembly: AssemblyCopyright("Copyright © 2015 Ilian Mas")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

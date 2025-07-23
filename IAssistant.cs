@@ -45,8 +45,11 @@ namespace IAssistant
         // ***********************************************
         // ***** Noms et chaines de caractères ***********
         // ***********************************************
-        private const string iAssistantConfigFile = "IAssistant.cfg";
-        private const string iAssistantAutoSaveFile = "IAssistant.AutoSave.txt"; // 💾 AUTOSAVE : fichier de sauvegarde auto
+        private const string iAssistantConfigFile = "IAssistant.cfg";                     // 💾 CONFIG: fichier de configuration
+        private const string iAssistantAutoSaveFile = "IAssistant.AutoSave.txt";          // 💾 AUTOSAVE : fichier de sauvegarde auto
+        private const string iAssistantNotesFileDefault = "IAssistant.db";                // 💾 NOTES : fichier NoSQL liteDB
+        private const string iAssistantNotesKeyVarDefault = "IASSISTANT_LITEDB_PASSWORD"; // 💾 NOTES : Password NoSQL liteDB
+        private const string iAssistantNotesCollectionDefault = "notes";                  // 💾 NOTES : Collection NoSQL liteDB
         private const string iAssistantNotepadExe = "notepad.exe";
         private const string iAssistantUser32dll = "user32.dll";
         private const string iAssistantName = "IAssistant";
@@ -102,19 +105,25 @@ namespace IAssistant
         private const string iAssistantRdvButtonText = "📅";                             // Label Bouton Envoi Rdv 
         private const string iAssistantCourrielButtonIcon = "SendEmail32.ico";           // Label Bouton Envoi email
         private const string iAssistantCourrielButtonText = "📨";                        // Label Bouton Envoi email
-        private const string iAssistantCourrielConfigTitle = "Open Outlook Email";       // Label Configuration Email - Titre
+        private const string iAssistantNotesButtonIcon = "Notes32.ico";                  // 💾 NOTES : Button Icon
+        private const string iAssistantNotesButtonText = "📝";                           // 💾 NOTES : Label du bouton NoSQL liteDB
+        private const string iAssistantCourrielButtonTip = "Open Outlook Email...";       // Label Configuration Email - Titre
         private const string iAssistantCourrielConfigObject = "Object:";                 // Label Configuration Email - Object
         private const string iAssistantOutlookEmailSubjectDefault = "A définir";         // Label Configuration Email - Subject Email
         private const string iAssistantOutlookMeetingSubjectDefault = "A définir";       // Label Configuration Email - Subject RDV
         private const string iAssistantOutlookMeetingLocationDefault = "A définir";      // Label Configuration Email - Location
         private const string iAssistantDicteeStartButtonTip = "Start Vocal dictation";   // Tip boutton Dictee vocale
         private const string iAssistantDicteeStopButtonTip = "Stop Vocal dictation";     // Tip boutton Dictee vocale
-        private const string iAssistantRdvButtonTip = "Open Outlook Meeting";            // Tip boutton Envoi Rdv 
+        private const string iAssistantRdvButtonTip = "Open Outlook Meeting...";         // Tip boutton Envoi Rdv 
+        private const string iAssistantNotesButtonTip = "Open Notes...";                 // Tip boutton NoSQL liteDB
+        public const string iAssistantNotesFormSave = "📤 Save Note";                    // Label bouton Save note
+        public const string iAssistantNotesFormNew = "＋ New Note";                      // Label bouton New note
+        public const string iAssistantNotesFormTitle = "IAssistant Notes";               // Titre fenetre note
 
+        public const int iAssistantDefaultTextFontSize = 11;         // Taille de police initiale
         private const int iAssistantUndoStackMaxItemsDefault = 999;   // Pas plus de 999 Undos par defaut (si pas en fichier de Config)
         private const int iAssistantPromptToShowLengthMax = 999;      // Pas plus de 999 car de Texte Utilisateur dans la fenetre de trace
         private const int iAssistantErrorStringLenghtMax = 200;       // Pas plus de 200 car à chaque niveau de la fenetre d'erreurs
-        private const int iAssistantDefaultTextFontSize = 11;         // Taille de police initiale
         private const int iAssistantTextEditorLeftMargin = 10;        // Marge gauche Editeur
         private const int iAssistantTextEditorRightMargin = 5;        // Marge droite Editeur
         private const int iAssistantActionPanelXOffset = 0;           // Déclalage X du panneau d'Actions
@@ -129,7 +138,7 @@ namespace IAssistant
         // ***** Caractéristiques des objets graphiques *********
         // ******************************************************
         // Font sizes
-        private const string iAssistantEditeurTextFontFamily = "Inter";                                // Police par défaut (ou "Segoe UI")
+        public const string iAssistantEditeurTextFontFamily = "Inter";                                // Police par défaut (ou "Segoe UI")
         private const int iAssistantButtonTextFontSize = iAssistantDefaultTextFontSize - 1;            // Taille de police Boutons
         private const int iAssistantEditeurMenuFontSize = iAssistantButtonTextFontSize;                // Taille de police Menuq
         private const int iAssistantEditeurTextFontSizeMin = 6, iAssistantEditeurTextFontSizeMax = 30; // Tailles de police min & max Curseur de Polices
@@ -144,18 +153,15 @@ namespace IAssistant
         private const int iAssistantButtonXSpace = 5, buttonYSpace = 5;                                // Boutons IA - Espacement 
         private const int iAssistantButtonWidth = iAssistantIAButtonIconSize + 8;                      // Boutons IA - Largeur
         private const int iAssistantButtonHeight = iAssistantButtonWidth;                              // Boutons IA - Hauteur
-        // Couleurs - FFFAFA snow, FFFAF0 Blanc cassé, FFF5EE orange, B0BEC5 gris, LightGray, 
-        // private static readonly Color buttonPanelBackColor = Color.Empty;
-        // private static readonly Color MyColorSnow = ColorTranslator.FromHtml("#FFFAFA");
         private static readonly Color iAssistantMyColorBluePale1 = ColorTranslator.FromHtml("#F7F9FC");
         private static readonly Color iAssistantMyColorBluePale2 = ColorTranslator.FromHtml("#E3EAF3");
         private static readonly Color iAssistantMyColorBlueDark = ColorTranslator.FromHtml("#1B3A57");
-        private static readonly Color iAssistantEditeurBackColor = iAssistantMyColorBluePale1;
         private static readonly Color iAssistantEditeurMenuBackColor = iAssistantMyColorBluePale2;
         private static readonly Color iAssistantEditeurMenuForeColor = iAssistantMyColorBlueDark;
         private static readonly Color iAssistantEditeurCurseurForeColor = iAssistantMyColorBlueDark;
-        private static readonly Color iAssistantButtonBackColor = iAssistantMyColorBluePale2;
-        private static readonly Color iAssistantButtonForeColor = iAssistantMyColorBlueDark;
+        public static readonly Color iAssistantEditeurBackColor = iAssistantMyColorBluePale1;
+        public static readonly Color iAssistantButtonBackColor = iAssistantMyColorBluePale2;
+        public static readonly Color iAssistantButtonForeColor = iAssistantMyColorBlueDark;
 
         // ********************************
         // ***** Error Messages ***********
@@ -166,6 +172,10 @@ namespace IAssistant
             { "ERROR_EDITOR_NOTEXT",            "Please enter text..." },
             { "ERROR_EDITOR_IACALL",            "Error while calling IA!" },
             { "ERROR_EDITOR_IACALLTOKENUNKNOWN","Authentication token unknown!\nPlease set environment variable referenced below..." },
+            { "ERROR_EDITOR_IACALLSERVICE",     "Error while calling IA : Service not running or not accessible!" },
+            { "ERROR_EDITOR_IACALLTIMEOUT",     "Error while calling IA : Time-out whil calling Service!" },
+            { "ERROR_EDITOR_NOTEDBKEY",         "Impossible to open DB file for Notes - Please check password (see Env. Var. below)!" },
+            { "ERROR_EDITOR_NOTEDBOPEN",        "Error while trying to open liteDB file for Notes!" },
             { "ERROR_EDITOR_CFGFILEOPEN",       "Configuration file impossible to open!" },
             { "ERROR_EDITOR_CFGFILEBAD",        "Configuration file not compliant!" },
             { "ERROR_EDITOR_CFGFILEUNKNOWN",    "Configuration file impossible to find!" },
@@ -183,8 +193,9 @@ namespace IAssistant
         // *************************************************
         // ***** Variables "Globales" graphiques ***********
         // *************************************************
-        private TextBox iAssistantEditor = null;                                            // Text Box Editeur
+        public static TextBox iAssistantEditor = null;                                            // Text Box Editeur
         private static Form iAssistantPaletteActions = null;                                // Palette d'action 
+        private IAssistantNoteForm iAssistantNoteForm = null;                               // 💾 fenêtre Notes
 
         // *****************************************************
         // ***** Variables "Globales" fonctionnelles ***********
@@ -201,6 +212,9 @@ namespace IAssistant
         private IAssistantVoiceDictation iAssistantDictationInstance = null;
         private bool iAssistantIsDictating = false;
         private Point iAssistantPaletteActionOffset = Point.Empty;                                  // Poisiton de la Palette d'Actions IA
+        private string iAssistantNotesFile = iAssistantNotesFileDefault;                            // 💾 NOTES : fichier NoSQL liteDB
+        private string iAssistantNotesKeyVar = iAssistantNotesKeyVarDefault;                        // 💾 NOTES : Password NoSQL liteDB
+        private string iAssistantNotesCollection = iAssistantNotesCollectionDefault;               // 💾 NOTES : Collection NoSQL liteDB
         private int iAssistantEditeurDefaultTextFontSize = iAssistantDefaultTextFontSize;           // Taille de police Editeur initiale 
         private string iAssistantOutlookEmailSubject = iAssistantOutlookEmailSubjectDefault;        // Outlook : Subject Email
         private string iAssistantOutlookMeetingSubject = iAssistantOutlookMeetingSubjectDefault;    // Outlook : Subject Rdv
@@ -292,6 +306,7 @@ namespace IAssistant
         private class AIAppConfiguration
         {
             public OutlookConfiguration Outlook { get; set; }
+            public NotesConfiguration Notes{ get; set; }
             public EditorConfiguration Editor { get; set; }
         }
         private class OutlookConfiguration
@@ -299,6 +314,11 @@ namespace IAssistant
             public string EmailSubject { get; set; }
             public string MeetingSubject { get; set; }
             public string MeetingLocation { get; set; }
+        }
+        private class NotesConfiguration
+        {
+            public string File { get; set; }
+            public string KeyVar { get; set; }
         }
         private class EditorConfiguration
         {
@@ -505,7 +525,15 @@ namespace IAssistant
                         IAssistantAIReplyReplace(result?.Replace("\n", Environment.NewLine));
                     }
                 }
-                catch (SystemException ex)
+                catch (HttpRequestException ex)  // Service not running / responding
+                {
+                    ErrorShow("ERROR_EDITOR_IACALLSERVICE", ex.Message, iaRequestBody.ToString());
+                }
+                catch (TaskCanceledException)    // Time-out on call
+                {
+                    ErrorShow("ERROR_EDITOR_IACALLTIMEOUT", iaRequestBody.ToString());
+                }
+                catch (SystemException ex)       // Other technical errors
                 {
                     ErrorShow("ERROR_EDITOR_IACALL", ex.Message, iaRequestBody.ToString());
                 }
@@ -648,7 +676,7 @@ namespace IAssistant
             if (string.IsNullOrWhiteSpace(iAssistantEditor.SelectedText))
                 iAssistantEditor.Text = aiReponseTexte;
             else
-            // ou Remplacement du texte n'est sélectionné
+            // ou Remplacement du texte sélectionné
             {
                 int selStart = iAssistantEditor.SelectionStart;
                 int selLength = iAssistantEditor.SelectionLength;
@@ -657,6 +685,31 @@ namespace IAssistant
                 iAssistantEditor.SelectionStart = selStart;
                 iAssistantEditor.SelectionLength = aiReponseTexte.Length;
             }
+        }
+
+        /// **********************************************************************
+        /// ***** Prise en compte de la réponse de l'IA dans l'Editeur ***********
+        /// **********************************************************************
+        public void IAssistantTextInsert(string textToInsert)
+        {
+            // 🔁 UNDO/REDO : sauvegarde l’état actuel, vide le redo
+            iAssistantUndoStack.Push(iAssistantEditor.Text);
+            iAssistantRedoStack.Clear();
+
+            // Position et longueur de la sélection courante
+            int selStart = iAssistantEditor.SelectionStart;
+            int selLength = iAssistantEditor.SelectionLength;
+
+            // Remplace la sélection (0 ⇒ simple insertion à la position du curseur)
+            iAssistantEditor.Text =
+                iAssistantEditor.Text.Substring(0, selStart) +
+                textToInsert +
+                iAssistantEditor.Text.Substring(selStart + selLength);
+
+            // Place le curseur juste après le texte inséré
+            iAssistantEditor.SelectionStart = selStart + textToInsert.Length;
+            iAssistantEditor.SelectionLength = 0;                // aucune sélection
+            iAssistantEditor.Focus();
         }
 
         ///// **********************************************************************
@@ -716,19 +769,28 @@ namespace IAssistant
                 iAssistantAIActions = config.Actions ?? new List<AIAction>();
                 iAssistantAIServices = config.Services ?? new List<AIService>();
 
+                /////////////////////////////////////////////////
                 // Parsing de la configuration interne
                 iAssistantAppConfiguration = config.Configuration ?? new AIAppConfiguration();
+                /////////////////////////////////////////////////
+                // Parsing Config outlook
                 OutlookConfiguration emailCfg = iAssistantAppConfiguration.Outlook;
                 iAssistantOutlookEmailSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.EmailSubject)) ? iAssistantOutlookEmailSubjectDefault : emailCfg.EmailSubject;
                 iAssistantOutlookMeetingSubject = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.MeetingSubject)) ? iAssistantOutlookMeetingSubjectDefault : emailCfg.MeetingSubject;
                 iAssistantOutlookMeetingLocation = ((emailCfg == null) || string.IsNullOrWhiteSpace(emailCfg.MeetingLocation)) ? iAssistantOutlookMeetingLocationDefault : emailCfg.MeetingLocation;
 
+                // Parsing Config Editeur
                 EditorConfiguration editorCfg = iAssistantAppConfiguration.Editor;
                 iAssistantEditeurDefaultTextFontSize = (editorCfg == null)
                                                     || (editorCfg.TextFontSize < iAssistantEditeurTextFontSizeMin)
                                                     || (editorCfg.TextFontSize > iAssistantEditeurTextFontSizeMax) ? iAssistantDefaultTextFontSize : editorCfg.TextFontSize;
                 iAssistantDictationConfidence = (editorCfg == null) ? iAssistantDictationDefaultConfidence : editorCfg.DictationConfidence;
                 iAssistantUndoStackMaxItems = (editorCfg == null) || (editorCfg.UndoMax < 0) || (editorCfg.UndoMax > iAssistantUndoStackMaxItemsDefault ) ? iAssistantUndoStackMaxItemsDefault : editorCfg.UndoMax;
+
+                // Parsing Config Notes DB
+                NotesConfiguration notesCfg = iAssistantAppConfiguration.Notes;
+                iAssistantNotesFile = (notesCfg == null) || string.IsNullOrWhiteSpace(notesCfg.File) ? iAssistantNotesFileDefault : notesCfg.File;
+                iAssistantNotesKeyVar = (notesCfg == null) || string.IsNullOrWhiteSpace(notesCfg.KeyVar) ? iAssistantNotesKeyVarDefault : notesCfg.KeyVar;
 
                 // Trouve le Modèle par défaut ou sélectionne le premier par défaut
                 iAssistantAIModeleActif = iAssistantAIServices?.SelectMany(s => s.Models ?? Enumerable.Empty<AIModel>()).FirstOrDefault(m => m.Default)           // modèle “par défaut”
@@ -1088,6 +1150,43 @@ namespace IAssistant
             hoverTip.SetToolTip(btnDictee, iAssistantDicteeStartButtonTip);
 
             ///
+            /// Bouton Notes             
+            ///
+            ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantNotesButtonIcon),
+                                                new Size(iAssistantFctButtonIconSize, iAssistantFctButtonIconSize));
+            iconBmp = ico.ToBitmap();
+            Button btnNotes = new Button
+            {
+                Image = iconBmp,
+                ImageAlign = ContentAlignment.BottomCenter, // Centre l'icône
+                Text = (iconBmp == null ? iAssistantNotesButtonText : string.Empty),
+                Width = iAssistantFctButtonIconSize + 8,
+                Height = iAssistantFctButtonIconSize + 8,
+                Font = btnFont,
+                FlatStyle = FlatStyle.Flat,
+                Anchor = AnchorStyles.Bottom | AnchorStyles.Right
+            };
+            btnNotes.FlatAppearance.BorderSize = 0;
+
+            // On le place juste à gauche de btnDictee
+            btnNotes.Left = btnDictee.Left - btnNotes.Width - spacing;
+            btnNotes.Top = this.ClientSize.Height - btnDictee.Height - iAssistantFctButtonBottomMargin + 5;  //btnDictee.Top;
+
+            // Associez ici votre méthode d'envoi
+            btnNotes.Click += (s, e) => {
+                // Par exemple, récupérer le contenu et appeler votre SMTP/EWS
+                if (iAssistantNoteForm != null && !iAssistantNoteForm.IsDisposed)
+                    iAssistantNoteForm.BringToFront();
+                else { 
+                    iAssistantNoteForm = new IAssistantNoteForm(iAssistantNotesFile, iAssistantNotesKeyVar, iAssistantNotesCollection);
+                    if (iAssistantNoteForm != null && !iAssistantNoteForm.IsDisposed) 
+                        iAssistantNoteForm.Show();
+                }
+            };
+            this.Controls.Add(btnNotes);
+            hoverTip.SetToolTip(btnNotes, iAssistantNotesButtonTip);
+
+            ///
             /// Bouton d'envoi d'email             
             ///
             ico = new Icon(Path.Combine(WinForms.Application.StartupPath, iAssistantCourrielButtonIcon),
@@ -1107,8 +1206,8 @@ namespace IAssistant
             btnEnvoyer.FlatAppearance.BorderSize = 0;
 
             // On le place juste à gauche de btnDictee
-            btnEnvoyer.Left = btnDictee.Left - btnEnvoyer.Width - spacing;
-            btnEnvoyer.Top = this.ClientSize.Height - btnDictee.Height - iAssistantFctButtonBottomMargin + 5;  //btnDictee.Top;
+            btnEnvoyer.Left = btnNotes.Left - btnEnvoyer.Width - spacing;
+            btnEnvoyer.Top = this.ClientSize.Height - btnNotes.Height - iAssistantFctButtonBottomMargin + 5;  //btnDictee.Top;
 
             // Associez ici votre méthode d'envoi
             btnEnvoyer.Click += (s, e) => {
@@ -1117,7 +1216,7 @@ namespace IAssistant
                 IAssistantOutlook.OpenEmail(contenu, iAssistantOutlookEmailSubject);
             };
             this.Controls.Add(btnEnvoyer);
-            hoverTip.SetToolTip(btnEnvoyer, iAssistantCourrielConfigTitle);
+            hoverTip.SetToolTip(btnEnvoyer, iAssistantCourrielButtonTip);
 
             ///
             /// Bouton d'envoi de Rendez-vous             
