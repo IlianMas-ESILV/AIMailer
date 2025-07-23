@@ -70,7 +70,7 @@ namespace IAssistant
         private const string iAssistantTextEditorSelectionnerMenuLabel = "Select All (Ctrl+A)";
         private const string iAssistantTextFontSliderLabel = "Font : ";
         private const string iAssistantTextFontSliderTip = "Change Editor Text Size";      // Hovertip Clider Font Size
-        private const string iAssistantTextFileMenuTextLabel = "Text";
+        private const string iAssistantTextFileMenuTextLabel = "Editor";
         private const string iAssistantConfigMenuTextLabel = "Configuration";
         private const string iAssistantTextFileMenuModeleLabel = "Models";
         private const string iAssistantTextFileMenuFilter = "Text files (*.txt)|*.txt|All files (*.*)|*.*";

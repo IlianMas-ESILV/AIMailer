@@ -13,8 +13,6 @@
  * *****    16/07/25 - Ilian Mas - Renammed to IAssistant
  * *****    26/05/25 - Ilian Mas - Initial version
  * ***** - -------------------------------------------------------------------
-             Icon = IAssistant.iAssistantEditor.FindForm()?.Icon;
-
  ******/
 
 using LiteDB;
@@ -33,10 +31,10 @@ namespace IAssistant
     // ────────────────────────────────────────────────────────────
     public class IAssistantNote
     {
-        public ObjectId Id { get; set; }
-        public string Note { get; set; }
-        public string[] Tags { get; set; }
-        public DateTime ModifiedOn { get; set; } = DateTime.UtcNow;
+        public ObjectId Id { get; set; }                            // ID technique (auto)
+        public string Note { get; set; }                            // Contenu de la Note
+        public string[] Tags { get; set; }                          // Liste des Tags
+        public DateTime ModifiedOn { get; set; } = DateTime.UtcNow; // Date de Modification
     }
 
     // ────────────────────────────────────────────────────────────
@@ -122,7 +120,7 @@ namespace IAssistant
             Text = "IAssistant Notes";
             Width = 700;
             Height = 600    ;
-            Font = new Font("Segoe UI", 10);
+            Font = new Font(IAssistant.iAssistantEditeurTextFontFamily, IAssistant.iAssistantDefaultTextFontSize);
             BackColor = ColBackForm;
             Icon = IAssistant.iAssistantEditor.FindForm()?.Icon;      // même icône que la form principale
 
@@ -147,6 +145,7 @@ namespace IAssistant
             _flowTags.WrapContents = true;
             _flowTags.Margin = new Padding(0, 6, 0, 6);
 
+            ConfigureButton(_btnNew, "📝 New", new Padding(12, 4, 0, 0));
             ConfigureButton(_btnPublish, "🖫 Save  ", new Padding(12, 0, 0, 4));
             ConfigureButton(_btnNew, "📝 New", new Padding(12, 4, 0, 0));
             ConfigureButton(_btnSearch, "🔍 Search", new Padding(8, 0, 0, 0));
@@ -161,6 +160,11 @@ namespace IAssistant
             _lv.BorderStyle = BorderStyle.FixedSingle;
             _lv.Columns.Add("Contents", -2);  // ajusté dynamiquement
             _lv.Columns.Add("Tags", 230);
+            _lv.OwnerDraw = true;
+            _lv.DrawColumnHeader += ListView_DrawColumnHeader; // couleur + centrage
+            _lv.DrawItem += (_, __) => { };                   // indispensable en mode OwnerDraw_lv.DrawItem += ListView_DrawItem;
+            _lv.DrawSubItem += ListView_DrawSubItem;
+
 
             // Contextuel
             _ctx.Items.Add("Modify", null, (_, __) => BeginEditSelected());
@@ -258,11 +262,34 @@ namespace IAssistant
         private void AdjustListColumns()
         {
             if (_lv.Columns.Count < 2) return;
-            int scWidth = SystemInformation.VerticalScrollBarWidth;
-            int tagsWidth = _lv.Columns[1].Width;
-            int newWidth = _lv.ClientSize.Width - tagsWidth - scWidth;
-            _lv.Columns[0].Width = Math.Max(100, newWidth);
+
+            const int tagsWidth = 230;          // largeur fixe « Tags »
+            int scWidth = 0;                    // largeur scrollbar (si visible)
+
+            // — Détermination de la barre verticale ————————————
+            if (_lv.Items.Count > 0)
+            {
+                // Hauteur d’une ligne (premier item suffit)
+                int itemHeight = _lv.Items[0].Bounds.Height;
+
+                // Lignes visibles dans la zone cliente
+                int visibleRows = _lv.ClientSize.Height / itemHeight;
+
+                // Barre présente si + de lignes que de place
+                if (_lv.Items.Count > visibleRows)
+                    scWidth = SystemInformation.VerticalScrollBarWidth;
+            }
+
+            // — Calcul largeur « Contents » ————————————————
+            int contentsWidth = _lv.ClientSize.Width
+                                - tagsWidth
+                                - scWidth
+                                - 2;   // petite marge
+
+            _lv.Columns[0].Width = Math.Max(50, contentsWidth); // « Contents »
+            _lv.Columns[1].Width = tagsWidth;                   // « Tags » (ancré à droite)
         }
+
 
         private void UpdateSaveButtonEnabled() =>
             _btnPublish.Enabled = !string.IsNullOrWhiteSpace(_txtNote.Text);
@@ -311,6 +338,7 @@ namespace IAssistant
         // — Chargement / rafraîchissement ListView —————————
         private void LoadList(IEnumerable<IAssistantNote> src = null)
         {
+            int carMax = 500; // Longueur max de la preview   
             var data = src ??
                        _repo.Query()
                             .OrderByDescending(x => x.ModifiedOn)
@@ -320,7 +348,15 @@ namespace IAssistant
             _lv.Items.Clear();
             foreach (IAssistantNote n in data)
             {
-                var it = new ListViewItem(n.Note.Truncate(60));
+                // 1) Aplatit tous les sauts de ligne et tabulations
+                string flat = System.Text.RegularExpressions
+                              .Regex.Replace(n.Note, @"\s+", " ").Trim();
+
+                // 2) Coupe plus loin (ici 200 car.) pour voir un maximum
+                string preview = flat.Length <= carMax ? flat
+                                                    : flat.Substring(0, carMax - 3) + "…";
+
+                var it = new ListViewItem(preview);
                 it.SubItems.Add(string.Join(", ", n.Tags ?? Array.Empty<string>()));
                 it.Tag = n;
                 _lv.Items.Add(it);
@@ -445,6 +481,55 @@ namespace IAssistant
         {
             if (disposing) _repo?.Dispose();
             base.Dispose(disposing);
+        }
+        private void ListView_DrawColumnHeader(object sender,
+                                       DrawListViewColumnHeaderEventArgs e)
+        {
+            // Fond = ColBackForm (I.e. même couleur que la fenêtre)
+            using (var backBrush = new SolidBrush(ColBackForm))
+            using (var textBrush = new SolidBrush(ColButtonFore))   // texte = couleur boutons
+            using (var sf = new StringFormat
+            {
+                Alignment = StringAlignment.Center,
+                LineAlignment = StringAlignment.Center
+            })
+            {
+                e.Graphics.FillRectangle(backBrush, e.Bounds);               // fond
+                e.Graphics.DrawString(e.Header.Text, _lv.Font,               // texte
+                                      textBrush, e.Bounds, sf);
+            }
+            e.DrawDefault = false;    // on gère tout nous‑mêmes
+        }
+
+        private void ListView_DrawSubItem(object sender, DrawListViewSubItemEventArgs e)
+        {
+            bool selected = e.Item.Selected;
+
+            /* ▸ Couleur de fond :
+               - surbrillance si sélectionné
+               - sinon alternance pair / impair                 */
+            Color back = selected
+                         ? SystemColors.Highlight
+                         : (e.ItemIndex % 2 == 0
+                               ? _lv.BackColor                   // ligne paire
+                               : ColBackForm);                  // ligne impaire (léger contraste)
+
+            Color fore = selected ? SystemColors.HighlightText : _lv.ForeColor;
+
+            using (var backBrush = new SolidBrush(back))
+                e.Graphics.FillRectangle(backBrush, e.Bounds);
+
+            // ▸ Alignement GAUCHE + ellipsis en fin de cellule
+            TextFormatFlags flags = TextFormatFlags.Left
+                                  | TextFormatFlags.VerticalCenter
+                                  | TextFormatFlags.EndEllipsis;
+
+            TextRenderer.DrawText(e.Graphics,
+                                  e.SubItem.Text,
+                                  _lv.Font,
+                                  e.Bounds,
+                                  fore,
+                                  flags);
         }
     }
 
